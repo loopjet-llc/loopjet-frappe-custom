@@ -435,7 +435,7 @@ PRINT_HTML = (
 	+ """
 						<span class="lj-wordmark">Loopjet</span>
 					</div>
-					<div class="lj-company-sub">Do premium work. Run a premium process.</div>
+					<div class="lj-company-sub">We build software millions depend on.</div>
 				</div>
 				<div class="lj-doc-title">
 					<span class="lj-eyebrow">{{ document_label }}</span>
