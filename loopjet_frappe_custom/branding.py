@@ -390,6 +390,15 @@ PRINT_CSS = """
 	background: #ffffff;
 }
 
+.lj-tax-note {
+	margin-top: 18px;
+	padding: 14px 16px;
+	border: 1px solid rgba(34, 211, 238, 0.24);
+	border-radius: 18px;
+	background: rgba(236, 246, 251, 0.72);
+	color: var(--lj-text);
+}
+
 .lj-footer {
 	display: table;
 	width: 100%;
@@ -430,18 +439,22 @@ PRINT_CSS = """
 PRINT_HTML = (
 	"""
 {% set is_offer = doc.doctype == "Quotation" %}
-{% set document_label = "Offer" if is_offer else "Invoice" %}
+{% set selected_language = doc.get("loopjet_document_language") or doc.get("language") or "English" %}
+{% set is_german = selected_language in ["Deutsch", "German", "de", "de-DE"] %}
+{% set document_label = ("Angebot" if is_offer else "Rechnung") if is_german else ("Offer" if is_offer else "Invoice") %}
 {% set document_number = doc.open_business_document_number or doc.name %}
 {% set customer_label = doc.customer_name or doc.customer or doc.party_name or doc.name %}
 {% set company_email = frappe.db.get_value("Company", doc.company, "email") or "info@loopjet.io" %}
 {% set company_website = frappe.db.get_value("Company", doc.company, "website") or "https://loopjet.io" %}
 {% set company_name = doc.company or "Loopjet LLC" %}
 {% set issue_date = doc.get_formatted("transaction_date") if is_offer else doc.get_formatted("posting_date") %}
-{% set due_label = "Valid until" if is_offer else "Due date" %}
+{% set due_label = ("Gültig bis" if is_offer else "Fällig am") if is_german else ("Valid until" if is_offer else "Due date") %}
 {% set due_date = doc.get_formatted("valid_till") if is_offer else doc.get_formatted("due_date") %}
 {% set service_period_start = doc.get_formatted("service_period_start") if doc.service_period_start else "" %}
 {% set service_period_end = doc.get_formatted("service_period_end") if doc.service_period_end else "" %}
 {% set status = doc.status or ("Draft" if doc.docstatus == 0 else "Submitted") %}
+{% set status_label = {"Paid": "Bezahlt", "Unpaid": "Offen", "Overdue": "Überfällig", "Draft": "Entwurf", "Submitted": "Gebucht", "Open": "Offen"}.get(status, status) if is_german else status %}
+{% set tax_note = "Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge). Die Umsatzsteuer wird vom Leistungsempfänger geschuldet." if is_german else "Reverse charge applies. VAT is to be accounted for by the recipient." %}
 <div class="lj-doc">
 	<div class="lj-sheet">
 		<div class="lj-hero">
@@ -458,7 +471,7 @@ PRINT_HTML = (
 				<div class="lj-doc-title">
 					<span class="lj-eyebrow">{{ document_label }}</span>
 					<div class="lj-number">{{ document_number }}</div>
-					<span class="lj-status">{{ status }}</span>
+					<span class="lj-status">{{ status_label }}</span>
 				</div>
 			</div>
 		</div>
@@ -466,7 +479,7 @@ PRINT_HTML = (
 		<div class="lj-content">
 			<div class="lj-grid">
 				<div class="lj-card">
-					<div class="lj-label">{{ "Offer for" if is_offer else "Bill to" }}</div>
+					<div class="lj-label">{{ ("Angebot für" if is_offer else "Rechnung an") if is_german else ("Offer for" if is_offer else "Bill to") }}</div>
 					<div class="lj-name">{{ customer_label }}</div>
 					<div class="lj-muted">
 						{% if doc.address_display %}
@@ -479,13 +492,13 @@ PRINT_HTML = (
 					</div>
 				</div>
 				<div class="lj-card">
-					<div class="lj-label">Document details</div>
+					<div class="lj-label">{{ "Dokumentdetails" if is_german else "Document details" }}</div>
 					<div class="lj-meta-row">
-						<div class="lj-meta-key">{{ document_label }} no.</div>
+						<div class="lj-meta-key">{{ ("Angebotsnr." if is_offer else "Rechnungsnr.") if is_german else document_label ~ " no." }}</div>
 						<div class="lj-meta-value">{{ document_number }}</div>
 					</div>
 					<div class="lj-meta-row">
-						<div class="lj-meta-key">Date</div>
+						<div class="lj-meta-key">{{ "Datum" if is_german else "Date" }}</div>
 						<div class="lj-meta-value">{{ issue_date }}</div>
 					</div>
 					{% if service_period_start or service_period_end %}
@@ -507,12 +520,12 @@ PRINT_HTML = (
 						</div>
 					{% endif %}
 					<div class="lj-meta-row">
-						<div class="lj-meta-key">Currency</div>
+						<div class="lj-meta-key">{{ "Währung" if is_german else "Currency" }}</div>
 						<div class="lj-meta-value">{{ doc.currency }}</div>
 					</div>
 					{% if doc.po_no %}
 						<div class="lj-meta-row">
-							<div class="lj-meta-key">PO no.</div>
+							<div class="lj-meta-key">{{ "Bestellnr." if is_german else "PO no." }}</div>
 							<div class="lj-meta-value">{{ doc.po_no }}</div>
 						</div>
 					{% endif %}
@@ -523,10 +536,10 @@ PRINT_HTML = (
 				<thead>
 					<tr>
 						<th class="lj-num">#</th>
-						<th>Item</th>
-						<th class="lj-right">Qty</th>
-						<th class="lj-right">Rate</th>
-						<th class="lj-right">Amount</th>
+						<th>{{ "Position" if is_german else "Item" }}</th>
+						<th class="lj-right">{{ "Menge" if is_german else "Qty" }}</th>
+						<th class="lj-right">{{ "Preis" if is_german else "Rate" }}</th>
+						<th class="lj-right">{{ "Betrag" if is_german else "Amount" }}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -549,9 +562,9 @@ PRINT_HTML = (
 
 			<div class="lj-totals-wrap">
 				<div class="lj-words">
-					{% if doc.in_words %}
+					{% if doc.in_words and not is_german %}
 						<div class="lj-words-box">
-							<div class="lj-label">In words</div>
+							<div class="lj-label">{{ "In Worten" if is_german else "In words" }}</div>
 							{{ doc.in_words }}
 						</div>
 					{% endif %}
@@ -559,28 +572,28 @@ PRINT_HTML = (
 				<div class="lj-totals">
 					<div class="lj-total-panel">
 						<div class="lj-total-row">
-							<div class="lj-total-key">Subtotal</div>
+							<div class="lj-total-key">{{ "Zwischensumme" if is_german else "Subtotal" }}</div>
 							<div class="lj-total-value">{{ doc.get_formatted("net_total") or doc.get_formatted("total") }}</div>
 						</div>
 						{% if doc.discount_amount %}
 							<div class="lj-total-row">
-								<div class="lj-total-key">Discount</div>
+								<div class="lj-total-key">{{ "Rabatt" if is_german else "Discount" }}</div>
 								<div class="lj-total-value">- {{ doc.get_formatted("discount_amount") }}</div>
 							</div>
 						{% endif %}
 						{% if doc.total_taxes_and_charges %}
 							<div class="lj-total-row">
-								<div class="lj-total-key">Taxes</div>
+								<div class="lj-total-key">{{ "Steuern" if is_german else "Taxes" }}</div>
 								<div class="lj-total-value">{{ doc.get_formatted("total_taxes_and_charges") }}</div>
 							</div>
 						{% endif %}
 						<div class="lj-total-row lj-grand">
-							<div class="lj-total-key">Total</div>
+							<div class="lj-total-key">{{ "Gesamtbetrag" if is_german else "Total" }}</div>
 							<div class="lj-total-value">{{ doc.get_formatted("grand_total") }}</div>
 						</div>
 						{% if not is_offer and doc.outstanding_amount %}
 							<div class="lj-total-row">
-								<div class="lj-total-key">Outstanding</div>
+								<div class="lj-total-key">{{ "Offen" if is_german else "Outstanding" }}</div>
 								<div class="lj-total-value">{{ doc.get_formatted("outstanding_amount") }}</div>
 							</div>
 						{% endif %}
@@ -588,9 +601,16 @@ PRINT_HTML = (
 				</div>
 			</div>
 
+			{% if doc.get("reverse_charge_applies") %}
+				<div class="lj-tax-note">
+					<div class="lj-label">{{ "Steuerhinweis" if is_german else "Tax note" }}</div>
+					{{ tax_note }}
+				</div>
+			{% endif %}
+
 			{% if doc.terms or doc.remarks %}
 				<div class="lj-notes">
-					<div class="lj-label">{{ "Terms" if doc.terms else "Notes" }}</div>
+					<div class="lj-label">{{ ("Bedingungen" if doc.terms else "Hinweise") if is_german else ("Terms" if doc.terms else "Notes") }}</div>
 					{{ doc.terms or doc.remarks }}
 				</div>
 			{% endif %}
@@ -602,7 +622,7 @@ PRINT_HTML = (
 				</div>
 				<div class="lj-footer-right">
 					{{ company_email }}<br>
-					Generated by Loopjet ERP
+					{{ "Erstellt mit Loopjet ERP" if is_german else "Generated by Loopjet ERP" }}
 				</div>
 			</div>
 		</div>
@@ -637,28 +657,60 @@ LETTER_HEAD_FOOTER = """
 
 
 INVOICE_EMAIL_HTML = """
+{% set is_german = (loopjet_document_language or language or "English") in ["Deutsch", "German", "de", "de-DE"] %}
 <div style="font-family:Inter,Arial,sans-serif;color:#14161c;line-height:1.55">
-	<p>Hi {{ customer_name or customer }},</p>
-	<p>Please find attached invoice <strong>{{ open_business_document_number or name }}</strong>.</p>
+	<p>{{ "Hallo" if is_german else "Hi" }} {{ customer_name or customer }},</p>
+	<p>
+		{% if is_german %}
+			anbei erhalten Sie unsere Rechnung <strong>{{ open_business_document_number or name }}</strong>.
+		{% else %}
+			Please find attached invoice <strong>{{ open_business_document_number or name }}</strong>.
+		{% endif %}
+	</p>
 	{% if service_period_start or service_period_end %}
 		<p>Leistungszeitraum: <strong>{{ service_period_start or "" }}{% if service_period_start and service_period_end %} - {% endif %}{{ service_period_end or "" }}</strong></p>
 	{% endif %}
-	<p>The total is <strong>{{ currency }} {{ grand_total }}</strong>{% if due_date %}, due on <strong>{{ due_date }}</strong>{% endif %}.</p>
-	<p>If anything looks off, just reply to this email and we will help right away.</p>
+	{% if reverse_charge_applies %}
+		<p><strong>{{ "Steuerhinweis:" if is_german else "Tax note:" }}</strong> {{ "Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge). Die Umsatzsteuer wird vom Leistungsempfänger geschuldet." if is_german else "Reverse charge applies. VAT is to be accounted for by the recipient." }}</p>
+	{% endif %}
+	<p>
+		{% if is_german %}
+			Der Gesamtbetrag beträgt <strong>{{ currency }} {{ grand_total }}</strong>{% if due_date %}, fällig am <strong>{{ due_date }}</strong>{% endif %}.
+		{% else %}
+			The total is <strong>{{ currency }} {{ grand_total }}</strong>{% if due_date %}, due on <strong>{{ due_date }}</strong>{% endif %}.
+		{% endif %}
+	</p>
+	<p>{{ "Bei Fragen antworten Sie einfach auf diese E-Mail." if is_german else "If anything looks off, just reply to this email and we will help right away." }}</p>
 	<p style="margin-top:24px;color:#5d6470">Best,<br>Loopjet</p>
 </div>
 """
 
 
 OFFER_EMAIL_HTML = """
+{% set is_german = (loopjet_document_language or language or "English") in ["Deutsch", "German", "de", "de-DE"] %}
 <div style="font-family:Inter,Arial,sans-serif;color:#14161c;line-height:1.55">
-	<p>Hi {{ customer_name or party_name }},</p>
-	<p>Here is our offer <strong>{{ name }}</strong> for your review.</p>
+	<p>{{ "Hallo" if is_german else "Hi" }} {{ customer_name or party_name }},</p>
+	<p>
+		{% if is_german %}
+			anbei erhalten Sie unser Angebot <strong>{{ name }}</strong> zur Prüfung.
+		{% else %}
+			Here is our offer <strong>{{ name }}</strong> for your review.
+		{% endif %}
+	</p>
 	{% if service_period_start or service_period_end %}
 		<p>Leistungszeitraum: <strong>{{ service_period_start or "" }}{% if service_period_start and service_period_end %} - {% endif %}{{ service_period_end or "" }}</strong></p>
 	{% endif %}
-	<p>The proposed total is <strong>{{ currency }} {{ grand_total }}</strong>{% if valid_till %}, valid until <strong>{{ valid_till }}</strong>{% endif %}.</p>
-	<p>Reply with any questions or changes - happy to refine it with you.</p>
+	{% if reverse_charge_applies %}
+		<p><strong>{{ "Steuerhinweis:" if is_german else "Tax note:" }}</strong> {{ "Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge). Die Umsatzsteuer wird vom Leistungsempfänger geschuldet." if is_german else "Reverse charge applies. VAT is to be accounted for by the recipient." }}</p>
+	{% endif %}
+	<p>
+		{% if is_german %}
+			Der angebotene Gesamtbetrag beträgt <strong>{{ currency }} {{ grand_total }}</strong>{% if valid_till %}, gültig bis <strong>{{ valid_till }}</strong>{% endif %}.
+		{% else %}
+			The proposed total is <strong>{{ currency }} {{ grand_total }}</strong>{% if valid_till %}, valid until <strong>{{ valid_till }}</strong>{% endif %}.
+		{% endif %}
+	</p>
+	<p>{{ "Bei Fragen oder Änderungswünschen antworten Sie einfach auf diese E-Mail." if is_german else "Reply with any questions or changes - happy to refine it with you." }}</p>
 	<p style="margin-top:24px;color:#5d6470">Best,<br>Loopjet</p>
 </div>
 """
@@ -705,6 +757,20 @@ def install_custom_fields() -> None:
 				"label": "Leistungszeitraum Ende",
 				"fieldtype": "Date",
 				"insert_after": "service_period_start",
+			},
+			{
+				"fieldname": "loopjet_document_language",
+				"label": "Document Language",
+				"fieldtype": "Select",
+				"options": "English\nDeutsch",
+				"default": "English",
+				"insert_after": "service_period_end",
+			},
+			{
+				"fieldname": "reverse_charge_applies",
+				"label": "Reverse Charge Applies",
+				"fieldtype": "Check",
+				"insert_after": "loopjet_document_language",
 			},
 		]
 
