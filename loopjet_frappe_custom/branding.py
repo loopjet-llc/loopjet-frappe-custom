@@ -234,13 +234,29 @@ PRINT_CSS = """
 }
 
 .lj-meta-key {
-	width: 45%;
+	width: 38%;
 	color: var(--lj-muted);
+	padding-right: 12px;
 }
 
 .lj-meta-value {
+	width: 62%;
 	text-align: right;
 	font-weight: 700;
+	white-space: nowrap;
+}
+
+.lj-period-row .lj-meta-key,
+.lj-period-row .lj-meta-value {
+	display: block;
+	width: 100%;
+	padding-right: 0;
+	text-align: left;
+	white-space: normal;
+}
+
+.lj-period-row .lj-meta-value {
+	margin-top: 2px;
 }
 
 .lj-items {
@@ -423,6 +439,8 @@ PRINT_HTML = (
 {% set issue_date = doc.get_formatted("transaction_date") if is_offer else doc.get_formatted("posting_date") %}
 {% set due_label = "Valid until" if is_offer else "Due date" %}
 {% set due_date = doc.get_formatted("valid_till") if is_offer else doc.get_formatted("due_date") %}
+{% set service_period_start = doc.get_formatted("service_period_start") if doc.service_period_start else "" %}
+{% set service_period_end = doc.get_formatted("service_period_end") if doc.service_period_end else "" %}
 {% set status = doc.status or ("Draft" if doc.docstatus == 0 else "Submitted") %}
 <div class="lj-doc">
 	<div class="lj-sheet">
@@ -470,6 +488,18 @@ PRINT_HTML = (
 						<div class="lj-meta-key">Date</div>
 						<div class="lj-meta-value">{{ issue_date }}</div>
 					</div>
+					{% if service_period_start or service_period_end %}
+						<div class="lj-meta-row lj-period-row">
+							<div class="lj-meta-key">Leistungszeitraum</div>
+							<div class="lj-meta-value">
+								{% if service_period_start and service_period_end %}
+									{{ service_period_start }} - {{ service_period_end }}
+								{% else %}
+									{{ service_period_start or service_period_end }}
+								{% endif %}
+							</div>
+						</div>
+					{% endif %}
 					{% if due_date %}
 						<div class="lj-meta-row">
 							<div class="lj-meta-key">{{ due_label }}</div>
@@ -610,6 +640,9 @@ INVOICE_EMAIL_HTML = """
 <div style="font-family:Inter,Arial,sans-serif;color:#14161c;line-height:1.55">
 	<p>Hi {{ customer_name or customer }},</p>
 	<p>Please find attached invoice <strong>{{ open_business_document_number or name }}</strong>.</p>
+	{% if service_period_start or service_period_end %}
+		<p>Leistungszeitraum: <strong>{{ service_period_start or "" }}{% if service_period_start and service_period_end %} - {% endif %}{{ service_period_end or "" }}</strong></p>
+	{% endif %}
 	<p>The total is <strong>{{ currency }} {{ grand_total }}</strong>{% if due_date %}, due on <strong>{{ due_date }}</strong>{% endif %}.</p>
 	<p>If anything looks off, just reply to this email and we will help right away.</p>
 	<p style="margin-top:24px;color:#5d6470">Best,<br>Loopjet</p>
@@ -621,8 +654,11 @@ OFFER_EMAIL_HTML = """
 <div style="font-family:Inter,Arial,sans-serif;color:#14161c;line-height:1.55">
 	<p>Hi {{ customer_name or party_name }},</p>
 	<p>Here is our offer <strong>{{ name }}</strong> for your review.</p>
+	{% if service_period_start or service_period_end %}
+		<p>Leistungszeitraum: <strong>{{ service_period_start or "" }}{% if service_period_start and service_period_end %} - {% endif %}{{ service_period_end or "" }}</strong></p>
+	{% endif %}
 	<p>The proposed total is <strong>{{ currency }} {{ grand_total }}</strong>{% if valid_till %}, valid until <strong>{{ valid_till }}</strong>{% endif %}.</p>
-	<p>Reply with any questions or changes — happy to refine it with you.</p>
+	<p>Reply with any questions or changes - happy to refine it with you.</p>
 	<p style="margin-top:24px;color:#5d6470">Best,<br>Loopjet</p>
 </div>
 """
@@ -639,11 +675,42 @@ HELPDESK_EMAIL_HTML = """
 
 def install_branding() -> None:
 	"""Install/update Loopjet branded print and email templates."""
+	install_custom_fields()
 	install_letter_head()
 	install_print_formats()
 	install_email_templates()
 	_set_print_settings()
 	frappe.clear_cache()
+
+
+def install_custom_fields() -> None:
+	from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+
+	custom_fields = {}
+	for doctype, insert_after in {
+		"Sales Invoice": "due_date",
+		"Quotation": "valid_till",
+	}.items():
+		if not frappe.db.exists("DocType", doctype):
+			continue
+		custom_fields[doctype] = [
+			{
+				"fieldname": "service_period_start",
+				"label": "Leistungszeitraum Start",
+				"fieldtype": "Date",
+				"insert_after": insert_after,
+			},
+			{
+				"fieldname": "service_period_end",
+				"label": "Leistungszeitraum Ende",
+				"fieldtype": "Date",
+				"insert_after": "service_period_start",
+			},
+		]
+
+	if custom_fields:
+		create_custom_fields(custom_fields, update=True)
+		frappe.clear_cache()
 
 
 def install_letter_head() -> None:
