@@ -1,0 +1,32 @@
+[project]
+name = "loopjet_frappe_custom"
+authors = [
+    { name = "Loopjet LLC", email = "engineering@loopjet.com" },
+]
+description = "Upgrade-safe Loopjet extensions for the Frappe product suite"
+requires-python = ">=3.10"
+readme = "README.md"
+dynamic = ["version"]
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.bench.frappe-dependencies]
+frappe = ">=16.0.0,<17.0.0"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "RUF", "UP", "W"]
+ignore = ["E501", "W191"]
+
+[tool.ruff.format]
+indent-style = "tab"
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["loopjet_frappe_custom/tests"]
+
