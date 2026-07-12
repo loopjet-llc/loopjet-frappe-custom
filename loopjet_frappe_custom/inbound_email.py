@@ -320,9 +320,12 @@ def resend_inbound() -> dict[str, Any]:
 		return {"ok": False, "error": "method_not_allowed"}
 
 	raw_body = request.get_data(as_text=True) or "{}"
-	if not _is_authorized(raw_body, frappe.form_dict.get("token"), request, frappe.conf):
+	form_token = frappe.form_dict.get("token") or request.args.get("token")
+	if not _is_authorized(raw_body, form_token, request, frappe.conf):
 		frappe.local.response.http_status_code = 403
 		return {"ok": False, "error": "forbidden"}
+
+	frappe.set_user("Administrator")
 
 	try:
 		event = json.loads(raw_body)
