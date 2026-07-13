@@ -21,3 +21,9 @@ pytest
 
 Full Frappe installation and migration tests live in the deployment repository.
 
+## MCP setup UI
+
+The Desk page `/app/mcp-setup` lets each signed-in Frappe user generate, rotate,
+and revoke their own MCP API key. It shows ready-to-copy connection snippets for
+Claude, ChatGPT/OpenAI API, Codex, MCP Inspector, and other remote HTTP MCP
+clients. The API secret is only displayed immediately after generation.
