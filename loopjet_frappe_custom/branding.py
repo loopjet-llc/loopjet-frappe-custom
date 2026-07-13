@@ -423,6 +423,7 @@ PRINT_HTML = (
 {% set due_date = doc.get_formatted("valid_till") if is_offer else doc.get_formatted("due_date") %}
 {% set service_period_start = doc.get_formatted("service_period_start") if doc.service_period_start else "" %}
 {% set service_period_end = doc.get_formatted("service_period_end") if doc.service_period_end else "" %}
+{% set service_period_value = service_period_start ~ " - " ~ service_period_end if service_period_start and service_period_end else (service_period_start or service_period_end or "-") %}
 {% set tax_note = "Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge). Die Umsatzsteuer wird vom Leistungsempfänger geschuldet." if is_german else "Reverse charge applies. VAT is to be accounted for by the recipient." %}
 <div class="lj-doc">
 	<div class="lj-sheet">
@@ -468,18 +469,12 @@ PRINT_HTML = (
 						<div class="lj-meta-key">{{ "Datum" if is_german else "Date" }}</div>
 						<div class="lj-meta-value">{{ issue_date }}</div>
 					</div>
-					{% if service_period_start or service_period_end %}
-						<div class="lj-meta-row lj-period-row">
-							<div class="lj-meta-key">Leistungszeitraum</div>
-							<div class="lj-meta-value">
-								{% if service_period_start and service_period_end %}
-									{{ service_period_start }} - {{ service_period_end }}
-								{% else %}
-									{{ service_period_start or service_period_end }}
-								{% endif %}
-							</div>
+					<div class="lj-meta-row lj-period-row">
+						<div class="lj-meta-key">Leistungszeitraum</div>
+						<div class="lj-meta-value">
+							{{ service_period_value }}
 						</div>
-					{% endif %}
+					</div>
 					{% if due_date %}
 						<div class="lj-meta-row">
 							<div class="lj-meta-key">{{ due_label }}</div>
@@ -617,6 +612,7 @@ LETTER_HEAD_FOOTER = """
 
 INVOICE_EMAIL_HTML = """
 {% set is_german = (loopjet_document_language or language or "English") in ["Deutsch", "German", "de", "de-DE"] %}
+{% set service_period_value = service_period_start ~ " - " ~ service_period_end if service_period_start and service_period_end else (service_period_start or service_period_end or "-") %}
 <div style="font-family:Inter,Arial,sans-serif;color:#14161c;line-height:1.55">
 	<p>{{ "Hallo" if is_german else "Hi" }} {{ customer_name or customer }},</p>
 	<p>
@@ -626,9 +622,7 @@ INVOICE_EMAIL_HTML = """
 			Please find attached invoice <strong>{{ open_business_document_number or name }}</strong>.
 		{% endif %}
 	</p>
-	{% if service_period_start or service_period_end %}
-		<p>Leistungszeitraum: <strong>{{ service_period_start or "" }}{% if service_period_start and service_period_end %} - {% endif %}{{ service_period_end or "" }}</strong></p>
-	{% endif %}
+	<p>Leistungszeitraum: <strong>{{ service_period_value }}</strong></p>
 	{% if reverse_charge_applies %}
 		<p><strong>{{ "Steuerhinweis:" if is_german else "Tax note:" }}</strong> {{ "Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge). Die Umsatzsteuer wird vom Leistungsempfänger geschuldet." if is_german else "Reverse charge applies. VAT is to be accounted for by the recipient." }}</p>
 	{% endif %}
@@ -647,6 +641,7 @@ INVOICE_EMAIL_HTML = """
 
 OFFER_EMAIL_HTML = """
 {% set is_german = (loopjet_document_language or language or "English") in ["Deutsch", "German", "de", "de-DE"] %}
+{% set service_period_value = service_period_start ~ " - " ~ service_period_end if service_period_start and service_period_end else (service_period_start or service_period_end or "-") %}
 <div style="font-family:Inter,Arial,sans-serif;color:#14161c;line-height:1.55">
 	<p>{{ "Hallo" if is_german else "Hi" }} {{ customer_name or party_name }},</p>
 	<p>
@@ -656,9 +651,7 @@ OFFER_EMAIL_HTML = """
 			Here is our offer <strong>{{ name }}</strong> for your review.
 		{% endif %}
 	</p>
-	{% if service_period_start or service_period_end %}
-		<p>Leistungszeitraum: <strong>{{ service_period_start or "" }}{% if service_period_start and service_period_end %} - {% endif %}{{ service_period_end or "" }}</strong></p>
-	{% endif %}
+	<p>Leistungszeitraum: <strong>{{ service_period_value }}</strong></p>
 	{% if reverse_charge_applies %}
 		<p><strong>{{ "Steuerhinweis:" if is_german else "Tax note:" }}</strong> {{ "Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge). Die Umsatzsteuer wird vom Leistungsempfänger geschuldet." if is_german else "Reverse charge applies. VAT is to be accounted for by the recipient." }}</p>
 	{% endif %}
@@ -710,12 +703,14 @@ def install_custom_fields() -> None:
 				"label": "Leistungszeitraum Start",
 				"fieldtype": "Date",
 				"insert_after": insert_after,
+				"reqd": 1,
 			},
 			{
 				"fieldname": "service_period_end",
 				"label": "Leistungszeitraum Ende",
 				"fieldtype": "Date",
 				"insert_after": "service_period_start",
+				"reqd": 1,
 			},
 			{
 				"fieldname": "loopjet_document_language",

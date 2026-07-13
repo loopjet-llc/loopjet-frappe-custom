@@ -15,3 +15,12 @@ def test_invoice_template_does_not_force_a4_height() -> None:
 	branding_source = Path(__file__).resolve().parents[1].joinpath("branding.py").read_text()
 
 	assert "min-height: 270mm" not in branding_source
+
+
+def test_invoice_template_always_renders_service_period_row() -> None:
+	branding_source = Path(__file__).resolve().parents[1].joinpath("branding.py").read_text()
+
+	assert "Leistungszeitraum" in branding_source
+	assert "service_period_value" in branding_source
+	assert '{% if service_period_start or service_period_end %}' not in branding_source
+	assert '"reqd": 1' in branding_source
