@@ -134,39 +134,13 @@ PRINT_CSS = """
 	font-size: 12px;
 }
 
-.lj-eyebrow {
-	display: inline-block;
-	padding: 5px 9px;
-	border-radius: 999px;
-	background: rgba(34, 211, 238, 0.12);
-	border: 1px solid rgba(34, 211, 238, 0.26);
-	color: #0e7490;
-	font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
-	font-size: 9px;
-	font-weight: 700;
-	letter-spacing: 0.16em;
-	text-transform: uppercase;
-}
-
 .lj-number {
-	margin: 8px 0 0;
+	margin: 0;
 	color: var(--lj-text);
 	font-family: "Space Grotesk", Inter, "Helvetica Neue", Arial, sans-serif;
 	font-size: 24px;
 	font-weight: 700;
 	letter-spacing: -0.04em;
-}
-
-.lj-status {
-	display: inline-block;
-	margin-top: 10px;
-	padding: 5px 10px;
-	border-radius: 999px;
-	background: rgba(34, 211, 238, 0.12);
-	color: #0e7490;
-	border: 1px solid rgba(34, 211, 238, 0.24);
-	font-size: 11px;
-	font-weight: 700;
 }
 
 .lj-content {
@@ -317,18 +291,11 @@ PRINT_CSS = """
 	margin-top: 22px;
 }
 
-.lj-words,
 .lj-totals {
 	display: table-cell;
 	vertical-align: bottom;
 }
 
-.lj-words {
-	width: 55%;
-	padding-right: 22px;
-}
-
-.lj-words-box,
 .lj-notes {
 	padding: 16px;
 	border: 1px solid var(--lj-border);
@@ -452,8 +419,6 @@ PRINT_HTML = (
 {% set due_date = doc.get_formatted("valid_till") if is_offer else doc.get_formatted("due_date") %}
 {% set service_period_start = doc.get_formatted("service_period_start") if doc.service_period_start else "" %}
 {% set service_period_end = doc.get_formatted("service_period_end") if doc.service_period_end else "" %}
-{% set status = doc.status or ("Draft" if doc.docstatus == 0 else "Submitted") %}
-{% set status_label = {"Paid": "Bezahlt", "Unpaid": "Offen", "Overdue": "Überfällig", "Draft": "Entwurf", "Submitted": "Gebucht", "Open": "Offen"}.get(status, status) if is_german else status %}
 {% set tax_note = "Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge). Die Umsatzsteuer wird vom Leistungsempfänger geschuldet." if is_german else "Reverse charge applies. VAT is to be accounted for by the recipient." %}
 <div class="lj-doc">
 	<div class="lj-sheet">
@@ -469,9 +434,7 @@ PRINT_HTML = (
 					<div class="lj-company-sub">We build software millions depend on.</div>
 				</div>
 				<div class="lj-doc-title">
-					<span class="lj-eyebrow">{{ document_label }}</span>
 					<div class="lj-number">{{ document_number }}</div>
-					<span class="lj-status">{{ status_label }}</span>
 				</div>
 			</div>
 		</div>
@@ -561,14 +524,6 @@ PRINT_HTML = (
 			</table>
 
 			<div class="lj-totals-wrap">
-				<div class="lj-words">
-					{% if doc.in_words and not is_german %}
-						<div class="lj-words-box">
-							<div class="lj-label">{{ "In Worten" if is_german else "In words" }}</div>
-							{{ doc.in_words }}
-						</div>
-					{% endif %}
-				</div>
 				<div class="lj-totals">
 					<div class="lj-total-panel">
 						<div class="lj-total-row">
