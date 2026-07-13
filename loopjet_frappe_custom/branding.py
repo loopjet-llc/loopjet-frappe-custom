@@ -63,7 +63,6 @@ PRINT_CSS = """
 	line-height: 1.5;
 	background: #ffffff;
 	padding: 0;
-	min-height: 270mm;
 }
 
 .lj-sheet {
@@ -394,10 +393,15 @@ PRINT_CSS = """
 		border-radius: 0;
 		padding: 0;
 		background: #ffffff;
+		min-height: auto !important;
+		break-after: avoid;
+		page-break-after: avoid;
 	}
 
 	.lj-sheet {
 		box-shadow: none;
+		break-after: avoid;
+		page-break-after: avoid;
 	}
 }
 """
