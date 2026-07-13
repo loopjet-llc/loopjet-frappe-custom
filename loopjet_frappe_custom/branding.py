@@ -709,12 +709,14 @@ def install_custom_fields() -> None:
 				"label": "Leistungszeitraum Start",
 				"fieldtype": "Date",
 				"insert_after": insert_after,
+				"reqd": 0,
 			},
 			{
 				"fieldname": "service_period_end",
 				"label": "Leistungszeitraum Ende",
 				"fieldtype": "Date",
 				"insert_after": "service_period_start",
+				"reqd": 0,
 			},
 			{
 				"fieldname": "loopjet_document_language",

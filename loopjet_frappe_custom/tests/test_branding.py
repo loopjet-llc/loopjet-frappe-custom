@@ -23,4 +23,5 @@ def test_invoice_template_renders_service_period_only_when_present() -> None:
 	assert "Leistungszeitraum" in branding_source
 	assert "service_period_value" in branding_source
 	assert "{% if service_period_value %}" in branding_source
+	assert '"reqd": 0' in branding_source
 	assert '"reqd": 1' not in branding_source
