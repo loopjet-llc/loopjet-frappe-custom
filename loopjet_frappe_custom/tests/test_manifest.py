@@ -16,4 +16,6 @@ def test_frappe_metadata_exists() -> None:
 	assert (package / "hooks.py").is_file()
 	assert (package / "modules.txt").read_text().strip() == "Loopjet Custom"
 	assert (package / "loopjet_custom" / "__init__.py").is_file()
-	assert "[post_model_sync]" in (package / "patches.txt").read_text()
+	patches = (package / "patches.txt").read_text()
+	assert "[post_model_sync]" in patches
+	assert "loopjet_frappe_custom.patches.v0_1.add_raven_home_shortcut" in patches

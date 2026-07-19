@@ -3,6 +3,10 @@
 Upgrade-safe Loopjet extensions for Frappe Framework v16, ERPNext, Frappe HR,
 Frappe CRM, and Frappe Helpdesk.
 
+On ERPNext sites with Raven installed, the app keeps a **Raven Chat** URL
+shortcut in the public Home workspace so colleagues can open `/raven` directly
+from the Desk.
+
 ## Design rules
 
 - Never copy or edit upstream product code here.

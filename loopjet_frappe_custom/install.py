@@ -4,6 +4,7 @@ import frappe
 from frappe.utils.caching import redis_cache
 
 from loopjet_frappe_custom.branding import install_branding
+from loopjet_frappe_custom.workspace import install_raven_home_shortcut
 
 SUPPORTED_FRAPPE_MAJOR = 16
 
@@ -11,20 +12,20 @@ SUPPORTED_FRAPPE_MAJOR = 16
 def _validate_framework_version() -> None:
 	major = int(frappe.__version__.split(".", 1)[0])
 	if major != SUPPORTED_FRAPPE_MAJOR:
-		frappe.throw(
-			f"Loopjet Custom supports Frappe v{SUPPORTED_FRAPPE_MAJOR}; found {frappe.__version__}."
-		)
+		frappe.throw(f"Loopjet Custom supports Frappe v{SUPPORTED_FRAPPE_MAJOR}; found {frappe.__version__}.")
 
 
 def after_install() -> None:
 	_validate_framework_version()
 	install_branding()
+	install_raven_home_shortcut()
 	frappe.clear_cache()
 
 
 def after_migrate() -> None:
 	_validate_framework_version()
 	install_branding()
+	install_raven_home_shortcut()
 	frappe.clear_cache()
 
 
