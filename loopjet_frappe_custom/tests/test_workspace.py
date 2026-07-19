@@ -4,6 +4,8 @@ from loopjet_frappe_custom.workspace import (
 	RAVEN_SHORTCUT_BLOCK_ID,
 	RAVEN_SHORTCUT_LABEL,
 	add_raven_shortcut_to_layout,
+	raven_sidebar_item_values,
+	reconcile_raven_sidebar_item,
 )
 
 
@@ -38,3 +40,22 @@ def test_raven_shortcut_layout_update_is_idempotent() -> None:
 	assert first_changed is True
 	assert second_changed is False
 	assert updated == content
+
+
+def test_raven_sidebar_item_values_open_raven_directly() -> None:
+	assert raven_sidebar_item_values() == {
+		"label": "Raven Chat",
+		"type": "Link",
+		"link_type": "URL",
+		"link_to": "",
+		"url": "/raven",
+		"icon": "message-circle",
+	}
+
+
+def test_raven_sidebar_item_repair_is_idempotent() -> None:
+	item = {"label": "Raven", "type": "Link", "link_type": "URL", "url": "/raven"}
+
+	assert reconcile_raven_sidebar_item(item) is True
+	assert item == raven_sidebar_item_values()
+	assert reconcile_raven_sidebar_item(item) is False
