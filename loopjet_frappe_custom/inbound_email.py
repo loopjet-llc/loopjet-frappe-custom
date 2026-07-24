@@ -233,15 +233,36 @@ def _fetch_received_email(email_id: str, api_key: str | None) -> tuple[dict[str,
 	return data, None
 
 
-def _existing_ticket_for_message(message_id: str) -> str | None:
+def _existing_issue_for_message(message_id: str) -> str | None:
 	import frappe
 
 	if not message_id:
 		return None
 	return frappe.db.get_value(
 		"Communication",
-		{"message_id": message_id, "reference_doctype": "HD Ticket"},
+		{"message_id": message_id, "reference_doctype": "Issue"},
 		"reference_name",
+	)
+
+
+def _customer_for_sender(sender_email: str) -> str | None:
+	import frappe
+
+	if not sender_email:
+		return None
+
+	contact = frappe.db.get_value("Contact Email", {"email_id": sender_email}, "parent")
+	if not contact:
+		return None
+
+	return frappe.db.get_value(
+		"Dynamic Link",
+		{
+			"parenttype": "Contact",
+			"parent": contact,
+			"link_doctype": "Customer",
+		},
+		"link_name",
 	)
 
 
@@ -256,24 +277,23 @@ def _create_ticket(ticket_payload: dict[str, Any]) -> str:
 	import frappe
 	from frappe.utils import now, nowdate, nowtime
 
-	existing_ticket = _existing_ticket_for_message(ticket_payload["message_id"])
-	if existing_ticket:
-		return existing_ticket
+	existing_issue = _existing_issue_for_message(ticket_payload["message_id"])
+	if existing_issue:
+		return existing_issue
 
-	ticket = frappe.new_doc("HD Ticket")
-	ticket.subject = ticket_payload["subject"]
-	_set_if_field(ticket, "raised_by", ticket_payload["sender"])
-	_set_if_field(ticket, "description", ticket_payload["description"])
-	_set_if_field(ticket, "summary", ticket_payload["full_subject"])
-	if frappe.db.exists("HD Ticket Status", "Open"):
-		_set_if_field(ticket, "status", "Open")
-	if frappe.db.exists("HD Ticket Priority", "Medium"):
-		_set_if_field(ticket, "priority", "Medium")
+	issue = frappe.new_doc("Issue")
+	issue.subject = ticket_payload["subject"]
+	_set_if_field(issue, "raised_by", ticket_payload["sender"])
+	_set_if_field(issue, "description", ticket_payload["description"])
+	_set_if_field(issue, "status", "Open")
 	if frappe.db.exists("Email Account", SUPPORT_EMAIL_ACCOUNT):
-		_set_if_field(ticket, "email_account", SUPPORT_EMAIL_ACCOUNT)
-	_set_if_field(ticket, "opening_date", nowdate())
-	_set_if_field(ticket, "opening_time", nowtime())
-	ticket.insert(ignore_permissions=True)
+		_set_if_field(issue, "email_account", SUPPORT_EMAIL_ACCOUNT)
+	_set_if_field(issue, "company", "Loopjet LLC")
+	_set_if_field(issue, "via_customer_portal", 1)
+	_set_if_field(issue, "customer", _customer_for_sender(ticket_payload["sender"]))
+	_set_if_field(issue, "opening_date", nowdate())
+	_set_if_field(issue, "opening_time", nowtime())
+	issue.insert(ignore_permissions=True)
 
 	communication = frappe.new_doc("Communication")
 	communication.communication_type = "Communication"
@@ -285,8 +305,8 @@ def _create_ticket(ticket_payload: dict[str, Any]) -> str:
 	communication.cc = ticket_payload["cc"]
 	communication.content = ticket_payload["description"]
 	communication.text_content = ticket_payload["text_content"]
-	communication.reference_doctype = "HD Ticket"
-	communication.reference_name = ticket.name
+	communication.reference_doctype = "Issue"
+	communication.reference_name = issue.name
 	communication.communication_date = now()
 	communication.message_id = ticket_payload["message_id"]
 	if frappe.db.exists("Email Account", SUPPORT_EMAIL_ACCOUNT):
@@ -294,7 +314,7 @@ def _create_ticket(ticket_payload: dict[str, Any]) -> str:
 	communication.insert(ignore_permissions=True)
 
 	frappe.db.commit()
-	return ticket.name
+	return issue.name
 
 
 def _extract_event_data(event: dict[str, Any]) -> dict[str, Any]:
@@ -345,9 +365,9 @@ def resend_inbound() -> dict[str, Any]:
 		email_data["email_id"] = email_id
 
 	ticket_payload = build_ticket_payload(email_data, fetch_error)
-	existing_ticket = _existing_ticket_for_message(ticket_payload["message_id"])
-	if existing_ticket:
-		return {"ok": True, "duplicate": True, "ticket": existing_ticket}
+	existing_issue = _existing_issue_for_message(ticket_payload["message_id"])
+	if existing_issue:
+		return {"ok": True, "duplicate": True, "issue": existing_issue}
 
-	ticket_name = _create_ticket(ticket_payload)
-	return {"ok": True, "ticket": ticket_name, "body_fetched": not bool(fetch_error)}
+	issue_name = _create_ticket(ticket_payload)
+	return {"ok": True, "issue": issue_name, "body_fetched": not bool(fetch_error)}
