@@ -1,4 +1,4 @@
-from loopjet_frappe_custom.inbound_email import build_ticket_payload
+from loopjet_frappe_custom.inbound_email import build_recovery_ticket_payload, build_ticket_payload
 
 
 def test_build_ticket_payload_prefers_html_body() -> None:
@@ -38,3 +38,24 @@ def test_build_ticket_payload_falls_back_to_resend_metadata() -> None:
 	assert payload["message_id"] == "email_123"
 	assert "Resend returned HTTP 404" in payload["description"]
 	assert "screenshot.png" in payload["description"]
+
+
+def test_build_recovery_ticket_payload_preserves_message_metadata_without_attachments() -> None:
+	payload = build_recovery_ticket_payload(
+		{
+			"email_id": "email_recovery_123",
+			"message_id": "<recovery@example.com>",
+			"from": "Sender Name <sender@example.com>",
+			"to": ["support@inbound.loopjet.io"],
+			"subject": "Attachment processing failed",
+			"attachments": [{"id": "attachment_123", "filename": "broken.pdf"}],
+		}
+	)
+
+	assert payload["subject"] == "Attachment processing failed"
+	assert payload["sender"] == "sender@example.com"
+	assert payload["recipients"] == "support@inbound.loopjet.io"
+	assert payload["message_id"] == "<recovery@example.com>"
+	assert payload["attachments"] == []
+	assert "recovered from webhook metadata" in payload["description"]
+	assert "broken.pdf" not in payload["description"]

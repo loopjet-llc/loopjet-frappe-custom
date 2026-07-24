@@ -142,6 +142,17 @@ def build_ticket_payload(email_data: dict[str, Any], fetch_error: str | None = N
 	}
 
 
+def build_recovery_ticket_payload(email_data: dict[str, Any]) -> dict[str, Any]:
+	"""Build a metadata-only ticket after message-specific processing fails."""
+	return build_ticket_payload(
+		{
+			**email_data,
+			"attachments": [],
+		},
+		"Full inbound email processing failed; the ticket was recovered from webhook metadata.",
+	)
+
+
 def _header(request: Any, name: str) -> str:
 	return request.headers.get(name, "") if getattr(request, "headers", None) else ""
 
@@ -383,13 +394,21 @@ def _save_attachments(
 			)
 			continue
 
-		file_doc = save_file(
-			_attachment_filename(attachment_detail),
-			content,
-			"Communication",
-			communication.name,
-			is_private=0,
-		)
+		try:
+			file_doc = save_file(
+				_attachment_filename(attachment_detail),
+				content,
+				"Communication",
+				communication.name,
+				is_private=0,
+			)
+		except Exception:
+			frappe.logger("resend_inbound", allow_site=True).exception(
+				"Resend inbound attachment save failed email_id=%s filename=%s",
+				email_id,
+				_attachment_filename(attachment_detail),
+			)
+			continue
 		saved_files.append(
 			{
 				"filename": file_doc.file_name,
@@ -398,15 +417,22 @@ def _save_attachments(
 		)
 
 	if saved_files:
-		ticket.reload()
-		file_links = "".join(
-			f'<li><a href="{html.escape(file_info["file_url"])}">{html.escape(file_info["filename"])}</a></li>'
-			for file_info in saved_files
-		)
-		ticket.description = (ticket.description or "") + f"<p><strong>Attached files:</strong></p><ul>{file_links}</ul>"
-		ticket.save(ignore_permissions=True)
-		if ticket.meta.has_field("attachment") and not ticket.get("attachment"):
-			ticket.db_set("attachment", saved_files[0]["file_url"], update_modified=False)
+		try:
+			ticket.reload()
+			file_links = "".join(
+				f'<li><a href="{html.escape(file_info["file_url"])}">{html.escape(file_info["filename"])}</a></li>'
+				for file_info in saved_files
+			)
+			ticket.description = (ticket.description or "") + f"<p><strong>Attached files:</strong></p><ul>{file_links}</ul>"
+			ticket.save(ignore_permissions=True)
+			if ticket.meta.has_field("attachment") and not ticket.get("attachment"):
+				ticket.db_set("attachment", saved_files[0]["file_url"], update_modified=False)
+		except Exception:
+			frappe.logger("resend_inbound", allow_site=True).exception(
+				"Resend inbound ticket attachment link failed ticket=%s email_id=%s",
+				ticket.name,
+				email_id,
+			)
 
 	return saved_files
 
@@ -600,16 +626,39 @@ def resend_inbound() -> dict[str, Any]:
 
 	event_data = _extract_event_data(event)
 	email_id = str(event_data.get("email_id") or event_data.get("id") or "")
-	api_key = _get_resend_api_key()
-	received_email, fetch_error = _fetch_received_email(email_id, api_key)
-	email_data = {**event_data, **(received_email or {})}
-	if email_id and "email_id" not in email_data:
-		email_data["email_id"] = email_id
+	try:
+		api_key = _get_resend_api_key()
+		received_email, fetch_error = _fetch_received_email(email_id, api_key)
+		email_data = {**event_data, **(received_email or {})}
+		if email_id and "email_id" not in email_data:
+			email_data["email_id"] = email_id
 
-	ticket_payload = build_ticket_payload(email_data, fetch_error)
-	existing_ticket = _existing_ticket_for_message(ticket_payload["message_id"])
-	if existing_ticket:
-		return {"ok": True, "duplicate": True, "ticket": existing_ticket}
+		ticket_payload = build_ticket_payload(email_data, fetch_error)
+		existing_ticket = _existing_ticket_for_message(ticket_payload["message_id"])
+		if existing_ticket:
+			return {"ok": True, "duplicate": True, "ticket": existing_ticket}
 
-	ticket_name = _create_ticket(ticket_payload, api_key)
-	return {"ok": True, "ticket": ticket_name, "body_fetched": not bool(fetch_error)}
+		ticket_name = _create_ticket(ticket_payload, api_key)
+		return {"ok": True, "ticket": ticket_name, "body_fetched": not bool(fetch_error)}
+	except Exception:
+		frappe.logger("resend_inbound", allow_site=True).exception(
+			"Resend inbound failed email_id=%s sender=%s attachment_count=%s",
+			email_id,
+			event_data.get("from"),
+			len(event_data.get("attachments") or [])
+			if isinstance(event_data.get("attachments"), list)
+			else 0,
+		)
+		frappe.db.rollback()
+		fallback_payload = build_recovery_ticket_payload(event_data)
+		existing_ticket = _existing_ticket_for_message(fallback_payload["message_id"])
+		if existing_ticket:
+			return {"ok": True, "duplicate": True, "ticket": existing_ticket}
+
+		ticket_name = _create_ticket(fallback_payload, api_key=None)
+		return {
+			"ok": True,
+			"ticket": ticket_name,
+			"body_fetched": False,
+			"degraded": True,
+		}
