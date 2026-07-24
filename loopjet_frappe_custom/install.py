@@ -4,6 +4,7 @@ import frappe
 from frappe.utils.caching import redis_cache
 
 from loopjet_frappe_custom.branding import install_branding
+from loopjet_frappe_custom.portal import install_ticket_portal
 from loopjet_frappe_custom.workspace import install_raven_home_shortcut
 
 SUPPORTED_FRAPPE_MAJOR = 16
@@ -18,6 +19,7 @@ def _validate_framework_version() -> None:
 def after_install() -> None:
 	_validate_framework_version()
 	install_branding()
+	install_ticket_portal()
 	install_raven_home_shortcut()
 	frappe.clear_cache()
 
@@ -25,6 +27,7 @@ def after_install() -> None:
 def after_migrate() -> None:
 	_validate_framework_version()
 	install_branding()
+	install_ticket_portal()
 	install_raven_home_shortcut()
 	frappe.clear_cache()
 

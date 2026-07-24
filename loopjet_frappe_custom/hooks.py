@@ -12,7 +12,14 @@ required_apps = []
 after_install = "loopjet_frappe_custom.install.after_install"
 after_migrate = "loopjet_frappe_custom.install.after_migrate"
 
+get_website_user_home_page = "loopjet_frappe_custom.portal.get_website_user_home_page"
+
+website_redirects = [
+	{"source": "/portal", "target": "/helpdesk/my-tickets", "redirect_http_status": 302},
+	{"source": "/issues", "target": "/helpdesk/my-tickets", "redirect_http_status": 302},
+	{"source": "/support", "target": "/helpdesk/my-tickets/new", "redirect_http_status": 302},
+]
+
 # Add reviewed exports here. Avoid broad, unfiltered fixtures that can capture
 # site-specific or personal configuration.
 fixtures = []
-

@@ -297,14 +297,14 @@ def _download_attachment(download_url: str) -> tuple[bytes | None, str | None]:
 		return None, "Resend attachment download timed out"
 
 
-def _existing_issue_for_message(message_id: str) -> str | None:
+def _existing_ticket_for_message(message_id: str) -> str | None:
 	import frappe
 
 	if not message_id:
 		return None
 	return frappe.db.get_value(
 		"Communication",
-		{"message_id": message_id, "reference_doctype": "Issue"},
+		{"message_id": message_id, "reference_doctype": "HD Ticket"},
 		"reference_name",
 	)
 
@@ -324,7 +324,7 @@ def _customer_for_sender(sender_email: str) -> str | None:
 		{
 			"parenttype": "Contact",
 			"parent": contact,
-			"link_doctype": "Customer",
+			"link_doctype": "HD Customer",
 		},
 		"link_name",
 	)
@@ -347,7 +347,8 @@ def _set_if_field(doc: Any, fieldname: str, value: Any) -> None:
 
 
 def _save_attachments(
-	issue: Any,
+	ticket: Any,
+	communication: Any,
 	attachments: list[dict[str, Any]],
 	email_id: str,
 	api_key: str | None,
@@ -385,8 +386,8 @@ def _save_attachments(
 		file_doc = save_file(
 			_attachment_filename(attachment_detail),
 			content,
-			"Issue",
-			issue.name,
+			"Communication",
+			communication.name,
 			is_private=0,
 		)
 		saved_files.append(
@@ -397,40 +398,37 @@ def _save_attachments(
 		)
 
 	if saved_files:
-		issue.reload()
+		ticket.reload()
 		file_links = "".join(
 			f'<li><a href="{html.escape(file_info["file_url"])}">{html.escape(file_info["filename"])}</a></li>'
 			for file_info in saved_files
 		)
-		issue.description = (issue.description or "") + f"<p><strong>Attached files:</strong></p><ul>{file_links}</ul>"
-		issue.save(ignore_permissions=True)
-		if issue.meta.has_field("attachment") and not issue.get("attachment"):
-			issue.db_set("attachment", saved_files[0]["file_url"], update_modified=False)
+		ticket.description = (ticket.description or "") + f"<p><strong>Attached files:</strong></p><ul>{file_links}</ul>"
+		ticket.save(ignore_permissions=True)
+		if ticket.meta.has_field("attachment") and not ticket.get("attachment"):
+			ticket.db_set("attachment", saved_files[0]["file_url"], update_modified=False)
 
 	return saved_files
 
 
 def _create_ticket(ticket_payload: dict[str, Any], api_key: str | None = None) -> str:
 	import frappe
-	from frappe.utils import now, nowdate, nowtime
+	from frappe.utils import now
 
-	existing_issue = _existing_issue_for_message(ticket_payload["message_id"])
-	if existing_issue:
-		return existing_issue
+	existing_ticket = _existing_ticket_for_message(ticket_payload["message_id"])
+	if existing_ticket:
+		return existing_ticket
 
-	issue = frappe.new_doc("Issue")
-	issue.subject = ticket_payload["subject"]
-	_set_if_field(issue, "raised_by", ticket_payload["sender"])
-	_set_if_field(issue, "description", ticket_payload["description"])
-	_set_if_field(issue, "status", "Open")
+	ticket = frappe.new_doc("HD Ticket")
+	ticket.subject = ticket_payload["subject"]
+	_set_if_field(ticket, "raised_by", ticket_payload["sender"])
 	if frappe.db.exists("Email Account", SUPPORT_EMAIL_ACCOUNT):
-		_set_if_field(issue, "email_account", SUPPORT_EMAIL_ACCOUNT)
-	_set_if_field(issue, "company", "Loopjet LLC")
-	_set_if_field(issue, "via_customer_portal", 1)
-	_set_if_field(issue, "customer", _customer_for_sender(ticket_payload["sender"]))
-	_set_if_field(issue, "opening_date", nowdate())
-	_set_if_field(issue, "opening_time", nowtime())
-	issue.insert(ignore_permissions=True)
+		_set_if_field(ticket, "email_account", SUPPORT_EMAIL_ACCOUNT)
+	_set_if_field(ticket, "via_customer_portal", 0)
+	_set_if_field(ticket, "customer", _customer_for_sender(ticket_payload["sender"]))
+	ticket.insert(ignore_permissions=True)
+	ticket.db_set("description", ticket_payload["description"], update_modified=False)
+	ticket.reload()
 
 	communication = frappe.new_doc("Communication")
 	communication.communication_type = "Communication"
@@ -442,8 +440,8 @@ def _create_ticket(ticket_payload: dict[str, Any], api_key: str | None = None) -
 	communication.cc = ticket_payload["cc"]
 	communication.content = ticket_payload["description"]
 	communication.text_content = ticket_payload["text_content"]
-	communication.reference_doctype = "Issue"
-	communication.reference_name = issue.name
+	communication.reference_doctype = "HD Ticket"
+	communication.reference_name = ticket.name
 	communication.communication_date = now()
 	communication.message_id = ticket_payload["message_id"]
 	if frappe.db.exists("Email Account", SUPPORT_EMAIL_ACCOUNT):
@@ -451,14 +449,114 @@ def _create_ticket(ticket_payload: dict[str, Any], api_key: str | None = None) -
 	communication.insert(ignore_permissions=True)
 
 	_save_attachments(
-		issue,
+		ticket,
+		communication,
 		ticket_payload.get("attachments") or [],
 		ticket_payload.get("email_id") or "",
 		api_key,
 	)
 
 	frappe.db.commit()
-	return issue.name
+	return ticket.name
+
+
+def migrate_legacy_inbound_issues() -> list[dict[str, str]]:
+	"""Move tickets created by the old Resend integration from Issue to HD Ticket."""
+	import frappe
+
+	if not frappe.db.exists("DocType", "HD Ticket"):
+		return []
+
+	legacy_communications = frappe.get_all(
+		"Communication",
+		filters={
+			"reference_doctype": "Issue",
+			"email_account": SUPPORT_EMAIL_ACCOUNT,
+			"message_id": ["is", "set"],
+		},
+		fields=[
+			"name",
+			"reference_name",
+			"message_id",
+			"subject",
+			"sender",
+			"recipients",
+			"cc",
+			"content",
+			"text_content",
+		],
+		order_by="creation asc",
+	)
+
+	migrated = []
+	for communication in legacy_communications:
+		if not frappe.db.exists("Issue", communication.reference_name):
+			continue
+
+		existing_ticket = _existing_ticket_for_message(communication.message_id)
+		if existing_ticket:
+			continue
+
+		issue = frappe.get_doc("Issue", communication.reference_name)
+		ticket_payload = {
+			"subject": issue.subject or communication.subject or "(No subject)",
+			"full_subject": communication.subject or issue.subject or "(No subject)",
+			"sender": _extract_email_from_header(communication.sender or issue.raised_by),
+			"sender_raw": communication.sender or issue.raised_by,
+			"recipients": communication.recipients or "",
+			"cc": communication.cc or "",
+			"description": issue.description or communication.content or "",
+			"text_content": communication.text_content or "",
+			"message_id": communication.message_id,
+			"email_id": "",
+			"attachments": [],
+		}
+
+		ticket = frappe.new_doc("HD Ticket")
+		ticket.subject = ticket_payload["subject"][:140]
+		_set_if_field(ticket, "raised_by", ticket_payload["sender"])
+		_set_if_field(ticket, "customer", _customer_for_sender(ticket_payload["sender"]))
+		_set_if_field(ticket, "email_account", SUPPORT_EMAIL_ACCOUNT)
+		_set_if_field(ticket, "via_customer_portal", 0)
+		ticket.insert(ignore_permissions=True)
+		ticket.db_set("description", ticket_payload["description"], update_modified=False)
+
+		frappe.db.set_value(
+			"Communication",
+			communication.name,
+			{
+				"reference_doctype": "HD Ticket",
+				"reference_name": ticket.name,
+			},
+			update_modified=False,
+		)
+
+		files = frappe.get_all(
+			"File",
+			filters={
+				"attached_to_doctype": "Issue",
+				"attached_to_name": issue.name,
+			},
+			fields=["name", "file_url"],
+		)
+		for file_info in files:
+			frappe.db.set_value(
+				"File",
+				file_info.name,
+				{
+					"attached_to_doctype": "Communication",
+					"attached_to_name": communication.name,
+				},
+				update_modified=False,
+			)
+		if files and ticket.meta.has_field("attachment"):
+			ticket.db_set("attachment", files[0].file_url, update_modified=False)
+
+		migrated.append({"issue": issue.name, "ticket": ticket.name})
+
+	if migrated:
+		frappe.db.commit()
+	return migrated
 
 
 def _extract_event_data(event: dict[str, Any]) -> dict[str, Any]:
@@ -509,9 +607,9 @@ def resend_inbound() -> dict[str, Any]:
 		email_data["email_id"] = email_id
 
 	ticket_payload = build_ticket_payload(email_data, fetch_error)
-	existing_issue = _existing_issue_for_message(ticket_payload["message_id"])
-	if existing_issue:
-		return {"ok": True, "duplicate": True, "issue": existing_issue}
+	existing_ticket = _existing_ticket_for_message(ticket_payload["message_id"])
+	if existing_ticket:
+		return {"ok": True, "duplicate": True, "ticket": existing_ticket}
 
-	issue_name = _create_ticket(ticket_payload, api_key)
-	return {"ok": True, "issue": issue_name, "body_fetched": not bool(fetch_error)}
+	ticket_name = _create_ticket(ticket_payload, api_key)
+	return {"ok": True, "ticket": ticket_name, "body_fetched": not bool(fetch_error)}
