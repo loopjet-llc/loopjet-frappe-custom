@@ -1,4 +1,11 @@
-from loopjet_frappe_custom.inbound_email import build_recovery_ticket_payload, build_ticket_payload
+from loopjet_frappe_custom.inbound_email import (
+	INBOUND_ATTACHMENT_MAX_BYTES,
+	attachment_fits_storage_budget,
+	build_attachment_links,
+	build_recovery_ticket_payload,
+	build_ticket_payload,
+	required_file_size_limit,
+)
 
 
 def test_build_ticket_payload_prefers_html_body() -> None:
@@ -59,3 +66,26 @@ def test_build_recovery_ticket_payload_preserves_message_metadata_without_attach
 	assert payload["attachments"] == []
 	assert "recovered from webhook metadata" in payload["description"]
 	assert "broken.pdf" not in payload["description"]
+
+
+def test_inbound_attachment_budget_accepts_ticket_0004_pdf_and_preserves_higher_limits() -> None:
+	assert attachment_fits_storage_budget(11_807_140)
+	assert attachment_fits_storage_budget(INBOUND_ATTACHMENT_MAX_BYTES)
+	assert not attachment_fits_storage_budget(INBOUND_ATTACHMENT_MAX_BYTES + 1)
+	assert required_file_size_limit(10 * 1024 * 1024) == INBOUND_ATTACHMENT_MAX_BYTES
+	assert required_file_size_limit(50 * 1024 * 1024) == 50 * 1024 * 1024
+
+
+def test_private_attachment_links_offer_open_or_download_action() -> None:
+	links = build_attachment_links(
+		[
+			{
+				"filename": "customer invoice.pdf",
+				"file_url": "/private/files/customer-invoice.pdf",
+			}
+		]
+	)
+
+	assert "Available attachments" in links
+	assert "Open or download customer invoice.pdf" in links
+	assert 'href="/private/files/customer-invoice.pdf"' in links

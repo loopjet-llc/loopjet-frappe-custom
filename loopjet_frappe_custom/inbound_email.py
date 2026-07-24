@@ -24,6 +24,7 @@ SUPPORT_EMAIL_ACCOUNT = "Loopjet Support"
 INBOUND_TOKEN_CONFIG_KEY = "loopjet_resend_inbound_token"
 WEBHOOK_SECRET_CONFIG_KEY = "loopjet_resend_webhook_secret"
 RECEIVING_API_KEY_CONFIG_KEY = "loopjet_resend_receiving_api_key"
+INBOUND_ATTACHMENT_MAX_BYTES = 40 * 1024 * 1024
 
 
 def _as_list(value: Any) -> list[str]:
@@ -84,6 +85,34 @@ def _attachment_summary(attachments: Any) -> str:
 	if not lines:
 		return ""
 	return "<p><strong>Attachments received:</strong></p><ul>" + "".join(f"<li>{line}</li>" for line in lines) + "</ul>"
+
+
+def required_file_size_limit(current_limit: Any) -> int:
+	"""Keep Frappe's upload ceiling high enough for Resend's maximum email size."""
+	try:
+		configured_limit = int(current_limit or 0)
+	except (TypeError, ValueError):
+		configured_limit = 0
+	return max(configured_limit, INBOUND_ATTACHMENT_MAX_BYTES)
+
+
+def attachment_fits_storage_budget(size: Any, stored_bytes: int = 0) -> bool:
+	"""Bound inbound attachment storage to one Resend-sized email per webhook."""
+	try:
+		attachment_size = int(size)
+	except (TypeError, ValueError):
+		return False
+	return 0 <= attachment_size <= INBOUND_ATTACHMENT_MAX_BYTES - stored_bytes
+
+
+def build_attachment_links(saved_files: list[dict[str, str]]) -> str:
+	"""Build durable private-file links that survive Helpdesk UI changes."""
+	file_links = "".join(
+		f'<li><a href="{html.escape(file_info["file_url"])}">'
+		f'Open or download {html.escape(file_info["filename"])}</a></li>'
+		for file_info in saved_files
+	)
+	return f"<p><strong>Available attachments:</strong></p><ul>{file_links}</ul>"
 
 
 def _fallback_description(email_data: dict[str, Any], fetch_error: str | None = None) -> str:
@@ -368,8 +397,39 @@ def _save_attachments(
 	from frappe.utils.file_manager import save_file
 
 	saved_files = []
+	stored_bytes = 0
 	for attachment in attachments:
 		if not isinstance(attachment, dict):
+			continue
+
+		filename = _attachment_filename(attachment)
+		existing_file = frappe.db.get_value(
+			"File",
+			{
+				"attached_to_doctype": "Communication",
+				"attached_to_name": communication.name,
+				"file_name": filename,
+				"is_private": 1,
+			},
+			["file_name", "file_url", "file_size"],
+			as_dict=True,
+		)
+		if existing_file:
+			stored_bytes += int(existing_file.file_size or 0)
+			saved_files.append(
+				{
+					"filename": existing_file.file_name,
+					"file_url": existing_file.file_url,
+				}
+			)
+			continue
+
+		declared_size = attachment.get("size")
+		if declared_size not in (None, "") and not attachment_fits_storage_budget(declared_size, stored_bytes):
+			frappe.log_error(
+				title="Loopjet Resend attachment exceeds storage limit",
+				message=f"{filename}: declared size {declared_size} bytes",
+			)
 			continue
 
 		attachment_detail = attachment
@@ -394,13 +454,20 @@ def _save_attachments(
 			)
 			continue
 
+		if not attachment_fits_storage_budget(len(content), stored_bytes):
+			frappe.log_error(
+				title="Loopjet Resend attachment exceeds storage limit",
+				message=f"{_attachment_filename(attachment_detail)}: downloaded size {len(content)} bytes",
+			)
+			continue
+
 		try:
 			file_doc = save_file(
 				_attachment_filename(attachment_detail),
 				content,
 				"Communication",
 				communication.name,
-				is_private=0,
+				is_private=1,
 			)
 		except Exception:
 			frappe.logger("resend_inbound", allow_site=True).exception(
@@ -409,6 +476,7 @@ def _save_attachments(
 				_attachment_filename(attachment_detail),
 			)
 			continue
+		stored_bytes += len(content)
 		saved_files.append(
 			{
 				"filename": file_doc.file_name,
@@ -418,13 +486,16 @@ def _save_attachments(
 
 	if saved_files:
 		try:
+			file_links = build_attachment_links(saved_files)
+			communication_content = communication.content or ""
+			if any(file_info["file_url"] not in communication_content for file_info in saved_files):
+				communication.db_set("content", communication_content + file_links, update_modified=False)
+
 			ticket.reload()
-			file_links = "".join(
-				f'<li><a href="{html.escape(file_info["file_url"])}">{html.escape(file_info["filename"])}</a></li>'
-				for file_info in saved_files
-			)
-			ticket.description = (ticket.description or "") + f"<p><strong>Attached files:</strong></p><ul>{file_links}</ul>"
-			ticket.save(ignore_permissions=True)
+			ticket_description = ticket.description or ""
+			if any(file_info["file_url"] not in ticket_description for file_info in saved_files):
+				ticket.description = ticket_description + file_links
+				ticket.save(ignore_permissions=True)
 			if ticket.meta.has_field("attachment") and not ticket.get("attachment"):
 				ticket.db_set("attachment", saved_files[0]["file_url"], update_modified=False)
 		except Exception:
@@ -435,6 +506,52 @@ def _save_attachments(
 			)
 
 	return saved_files
+
+
+def recover_ticket_attachments(ticket_name: str, email_id: str) -> dict[str, Any]:
+	"""Recover Resend files for an existing ticket after a prior attachment failure."""
+	import frappe
+
+	ticket = frappe.get_doc("HD Ticket", ticket_name)
+	communications = frappe.get_all(
+		"Communication",
+		filters={
+			"reference_doctype": "HD Ticket",
+			"reference_name": ticket.name,
+			"sent_or_received": "Received",
+		},
+		fields=["name", "message_id"],
+		order_by="creation asc",
+		limit=1,
+	)
+	if not communications:
+		frappe.throw(f"No received Communication exists for HD Ticket {ticket.name}.")
+
+	received_email, fetch_error = _fetch_received_email(email_id, _get_resend_api_key())
+	if fetch_error or not received_email:
+		frappe.throw(f"Unable to retrieve Resend email {email_id}: {fetch_error or 'missing email'}")
+
+	email_data = {**received_email, "email_id": email_id}
+	ticket_payload = build_ticket_payload(email_data)
+	communication_info = communications[0]
+	if communication_info.message_id and ticket_payload["message_id"] != communication_info.message_id:
+		frappe.throw("The Resend email message ID does not match the ticket Communication.")
+
+	communication = frappe.get_doc("Communication", communication_info.name)
+	saved_files = _save_attachments(
+		ticket,
+		communication,
+		ticket_payload.get("attachments") or [],
+		email_id,
+		_get_resend_api_key(),
+	)
+	frappe.db.commit()
+	frappe.clear_cache()
+	return {
+		"ticket": ticket.name,
+		"communication": communication.name,
+		"attachments": saved_files,
+	}
 
 
 def _create_ticket(ticket_payload: dict[str, Any], api_key: str | None = None) -> str:

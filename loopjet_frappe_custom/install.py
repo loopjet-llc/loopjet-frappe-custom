@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import frappe
+from frappe.installer import update_site_config
 from frappe.utils.caching import redis_cache
 
 from loopjet_frappe_custom.branding import install_branding
+from loopjet_frappe_custom.inbound_email import required_file_size_limit
 from loopjet_frappe_custom.portal import install_ticket_portal
 from loopjet_frappe_custom.workspace import install_raven_home_shortcut
 
@@ -18,6 +20,7 @@ def _validate_framework_version() -> None:
 
 def after_install() -> None:
 	_validate_framework_version()
+	ensure_inbound_attachment_capacity()
 	install_branding()
 	install_ticket_portal()
 	install_raven_home_shortcut()
@@ -26,10 +29,24 @@ def after_install() -> None:
 
 def after_migrate() -> None:
 	_validate_framework_version()
+	ensure_inbound_attachment_capacity()
 	install_branding()
 	install_ticket_portal()
 	install_raven_home_shortcut()
 	frappe.clear_cache()
+
+
+def ensure_inbound_attachment_capacity() -> None:
+	configured_limit = frappe.conf.get("max_file_size")
+	try:
+		configured_limit = int(configured_limit or 0)
+	except (TypeError, ValueError):
+		configured_limit = 0
+	required_limit = required_file_size_limit(configured_limit)
+	if configured_limit >= required_limit:
+		return
+	update_site_config("max_file_size", required_limit, validate=False)
+	frappe.local.conf.max_file_size = required_limit
 
 
 @redis_cache(ttl=300)
