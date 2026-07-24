@@ -402,9 +402,9 @@ def _save_attachments(
 			for file_info in saved_files
 		)
 		issue.description = (issue.description or "") + f"<p><strong>Attached files:</strong></p><ul>{file_links}</ul>"
-		if issue.meta.has_field("attachment") and not issue.get("attachment"):
-			issue.attachment = saved_files[0]["file_url"]
 		issue.save(ignore_permissions=True)
+		if issue.meta.has_field("attachment") and not issue.get("attachment"):
+			issue.db_set("attachment", saved_files[0]["file_url"], update_modified=False)
 
 	return saved_files
 
