@@ -19,6 +19,7 @@ except ImportError:  # pragma: no cover - lets helper tests run outside a Frappe
 
 RESEND_RECEIVED_EMAIL_URL = "https://api.resend.com/emails/receiving/{email_id}"
 RESEND_RECEIVED_ATTACHMENT_URL = "https://api.resend.com/emails/receiving/{email_id}/attachments/{attachment_id}"
+HTTP_USER_AGENT = "Loopjet ERP/1.0 (+https://loopjet.io)"
 SUPPORT_EMAIL_ACCOUNT = "Loopjet Support"
 INBOUND_TOKEN_CONFIG_KEY = "loopjet_resend_inbound_token"
 WEBHOOK_SECRET_CONFIG_KEY = "loopjet_resend_webhook_secret"
@@ -221,7 +222,7 @@ def _fetch_received_email(email_id: str, api_key: str | None) -> tuple[dict[str,
 
 	request = urllib.request.Request(
 		RESEND_RECEIVED_EMAIL_URL.format(email_id=email_id),
-		headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
+		headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json", "User-Agent": HTTP_USER_AGENT},
 		method="GET",
 	)
 	try:
@@ -258,7 +259,7 @@ def _fetch_received_attachment(
 			email_id=urllib.parse.quote(email_id, safe=""),
 			attachment_id=urllib.parse.quote(attachment_id, safe=""),
 		),
-		headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
+		headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json", "User-Agent": HTTP_USER_AGENT},
 		method="GET",
 	)
 	try:
@@ -284,7 +285,7 @@ def _download_attachment(download_url: str) -> tuple[bytes | None, str | None]:
 	if not download_url:
 		return None, "missing Resend attachment download URL"
 
-	request = urllib.request.Request(download_url, headers={"Accept": "*/*"}, method="GET")
+	request = urllib.request.Request(download_url, headers={"Accept": "*/*", "User-Agent": HTTP_USER_AGENT}, method="GET")
 	try:
 		with urllib.request.urlopen(request, timeout=30) as response:
 			return response.read(), None
