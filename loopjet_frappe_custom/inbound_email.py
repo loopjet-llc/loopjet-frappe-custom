@@ -7,6 +7,7 @@ import html
 import json
 import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from email.utils import getaddresses, parseaddr
 from typing import Any
@@ -17,9 +18,11 @@ except ImportError:  # pragma: no cover - lets helper tests run outside a Frappe
 	frappe = None  # type: ignore[assignment]
 
 RESEND_RECEIVED_EMAIL_URL = "https://api.resend.com/emails/receiving/{email_id}"
+RESEND_RECEIVED_ATTACHMENT_URL = "https://api.resend.com/emails/receiving/{email_id}/attachments/{attachment_id}"
 SUPPORT_EMAIL_ACCOUNT = "Loopjet Support"
 INBOUND_TOKEN_CONFIG_KEY = "loopjet_resend_inbound_token"
 WEBHOOK_SECRET_CONFIG_KEY = "loopjet_resend_webhook_secret"
+RECEIVING_API_KEY_CONFIG_KEY = "loopjet_resend_receiving_api_key"
 
 
 def _as_list(value: Any) -> list[str]:
@@ -134,6 +137,7 @@ def build_ticket_payload(email_data: dict[str, Any], fetch_error: str | None = N
 		"text_content": str(body_text or ""),
 		"message_id": str(message_id or ""),
 		"email_id": str(_first_present(email_data.get("email_id"), email_data.get("id"), "")),
+		"attachments": [item for item in (email_data.get("attachments") or []) if isinstance(item, dict)],
 	}
 
 
@@ -192,6 +196,10 @@ def _is_authorized(raw_body: str, form_token: str | None, request: Any, conf: An
 def _get_resend_api_key() -> str | None:
 	import frappe
 
+	configured_key = getattr(frappe.conf, RECEIVING_API_KEY_CONFIG_KEY, None)
+	if configured_key:
+		return configured_key
+
 	if frappe.db.exists("Email Account", SUPPORT_EMAIL_ACCOUNT):
 		return frappe.get_doc("Email Account", SUPPORT_EMAIL_ACCOUNT).get_password("password")
 
@@ -230,7 +238,62 @@ def _fetch_received_email(email_id: str, api_key: str | None) -> tuple[dict[str,
 		data = json.loads(payload)
 	except json.JSONDecodeError:
 		return None, "Resend returned invalid JSON"
+	if not isinstance(data, dict):
+		return None, "Resend returned invalid email"
 	return data, None
+
+
+def _fetch_received_attachment(
+	email_id: str, attachment_id: str, api_key: str | None
+) -> tuple[dict[str, Any] | None, str | None]:
+	if not email_id:
+		return None, "missing Resend email_id"
+	if not attachment_id:
+		return None, "missing Resend attachment id"
+	if not api_key:
+		return None, "missing Resend API key"
+
+	request = urllib.request.Request(
+		RESEND_RECEIVED_ATTACHMENT_URL.format(
+			email_id=urllib.parse.quote(email_id, safe=""),
+			attachment_id=urllib.parse.quote(attachment_id, safe=""),
+		),
+		headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
+		method="GET",
+	)
+	try:
+		with urllib.request.urlopen(request, timeout=20) as response:
+			payload = response.read().decode()
+	except urllib.error.HTTPError as exc:
+		return None, f"Resend returned HTTP {exc.code}"
+	except urllib.error.URLError as exc:
+		return None, f"Resend request failed: {exc.reason}"
+	except TimeoutError:
+		return None, "Resend request timed out"
+
+	try:
+		data = json.loads(payload)
+	except json.JSONDecodeError:
+		return None, "Resend returned invalid JSON"
+	if not isinstance(data, dict):
+		return None, "Resend returned invalid attachment"
+	return data, None
+
+
+def _download_attachment(download_url: str) -> tuple[bytes | None, str | None]:
+	if not download_url:
+		return None, "missing Resend attachment download URL"
+
+	request = urllib.request.Request(download_url, headers={"Accept": "*/*"}, method="GET")
+	try:
+		with urllib.request.urlopen(request, timeout=30) as response:
+			return response.read(), None
+	except urllib.error.HTTPError as exc:
+		return None, f"Resend attachment download returned HTTP {exc.code}"
+	except urllib.error.URLError as exc:
+		return None, f"Resend attachment download failed: {exc.reason}"
+	except TimeoutError:
+		return None, "Resend attachment download timed out"
 
 
 def _existing_issue_for_message(message_id: str) -> str | None:
@@ -266,6 +329,15 @@ def _customer_for_sender(sender_email: str) -> str | None:
 	)
 
 
+def _attachment_filename(attachment: dict[str, Any]) -> str:
+	filename = str(attachment.get("filename") or attachment.get("name") or "attachment").strip()
+	return filename or "attachment"
+
+
+def _attachment_id(attachment: dict[str, Any]) -> str:
+	return str(attachment.get("id") or attachment.get("attachment_id") or "").strip()
+
+
 def _set_if_field(doc: Any, fieldname: str, value: Any) -> None:
 	if value in (None, ""):
 		return
@@ -273,7 +345,70 @@ def _set_if_field(doc: Any, fieldname: str, value: Any) -> None:
 		doc.set(fieldname, value)
 
 
-def _create_ticket(ticket_payload: dict[str, Any]) -> str:
+def _save_attachments(
+	issue: Any,
+	attachments: list[dict[str, Any]],
+	email_id: str,
+	api_key: str | None,
+) -> list[dict[str, str]]:
+	import frappe
+	from frappe.utils.file_manager import save_file
+
+	saved_files = []
+	for attachment in attachments:
+		if not isinstance(attachment, dict):
+			continue
+
+		attachment_detail = attachment
+		if not attachment_detail.get("download_url"):
+			attachment_detail, attachment_error = _fetch_received_attachment(
+				email_id,
+				_attachment_id(attachment),
+				api_key,
+			)
+			if attachment_error:
+				frappe.log_error(
+					title="Loopjet Resend attachment fetch failed",
+					message=f"{_attachment_filename(attachment)}: {attachment_error}",
+				)
+				continue
+
+		content, download_error = _download_attachment(str(attachment_detail.get("download_url") or ""))
+		if download_error or content is None:
+			frappe.log_error(
+				title="Loopjet Resend attachment download failed",
+				message=f"{_attachment_filename(attachment_detail)}: {download_error}",
+			)
+			continue
+
+		file_doc = save_file(
+			_attachment_filename(attachment_detail),
+			content,
+			"Issue",
+			issue.name,
+			is_private=1,
+		)
+		saved_files.append(
+			{
+				"filename": file_doc.file_name,
+				"file_url": file_doc.file_url,
+			}
+		)
+
+	if saved_files:
+		file_links = "".join(
+			f'<li><a href="{html.escape(file_info["file_url"])}">{html.escape(file_info["filename"])}</a></li>'
+			for file_info in saved_files
+		)
+		issue.description = (issue.description or "") + f"<p><strong>Attached files:</strong></p><ul>{file_links}</ul>"
+		if issue.meta.has_field("attachment") and not issue.get("attachment"):
+			issue.attachment = saved_files[0]["file_url"]
+		issue.save(ignore_permissions=True)
+
+	return saved_files
+
+
+def _create_ticket(ticket_payload: dict[str, Any], api_key: str | None = None) -> str:
 	import frappe
 	from frappe.utils import now, nowdate, nowtime
 
@@ -312,6 +447,13 @@ def _create_ticket(ticket_payload: dict[str, Any]) -> str:
 	if frappe.db.exists("Email Account", SUPPORT_EMAIL_ACCOUNT):
 		communication.email_account = SUPPORT_EMAIL_ACCOUNT
 	communication.insert(ignore_permissions=True)
+
+	_save_attachments(
+		issue,
+		ticket_payload.get("attachments") or [],
+		ticket_payload.get("email_id") or "",
+		api_key,
+	)
 
 	frappe.db.commit()
 	return issue.name
@@ -369,5 +511,5 @@ def resend_inbound() -> dict[str, Any]:
 	if existing_issue:
 		return {"ok": True, "duplicate": True, "issue": existing_issue}
 
-	issue_name = _create_ticket(ticket_payload)
+	issue_name = _create_ticket(ticket_payload, api_key)
 	return {"ok": True, "issue": issue_name, "body_fetched": not bool(fetch_error)}
