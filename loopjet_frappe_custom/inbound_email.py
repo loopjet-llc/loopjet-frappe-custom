@@ -387,7 +387,7 @@ def _save_attachments(
 			content,
 			"Issue",
 			issue.name,
-			is_private=1,
+			is_private=0,
 		)
 		saved_files.append(
 			{
