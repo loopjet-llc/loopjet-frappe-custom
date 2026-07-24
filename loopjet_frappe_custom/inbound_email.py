@@ -396,6 +396,7 @@ def _save_attachments(
 		)
 
 	if saved_files:
+		issue.reload()
 		file_links = "".join(
 			f'<li><a href="{html.escape(file_info["file_url"])}">{html.escape(file_info["filename"])}</a></li>'
 			for file_info in saved_files
