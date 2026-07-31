@@ -1,0 +1,155 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from loopjet_frappe_custom.ai_sdr.install import (
+	AI_SDR_SHORTCUT_BLOCK_ID,
+	AI_SDR_SHORTCUT_LABEL,
+	_lead_form_script,
+	add_ai_sdr_shortcut_to_layout,
+)
+
+ROOT = Path(__file__).resolve().parents[2]
+PACKAGE = ROOT / "loopjet_frappe_custom"
+
+
+def test_crm_workspace_shortcut_is_inserted_after_portal() -> None:
+	content = json.dumps(
+		[
+			{
+				"id": "portal",
+				"type": "shortcut",
+				"data": {"shortcut_name": "CRM Portal Page", "col": 3},
+			},
+			{
+				"id": "leads",
+				"type": "shortcut",
+				"data": {"shortcut_name": "Leads", "col": 3},
+			},
+		]
+	)
+
+	updated, changed = add_ai_sdr_shortcut_to_layout(content)
+	layout = json.loads(updated)
+
+	assert changed is True
+	assert layout[1] == {
+		"id": AI_SDR_SHORTCUT_BLOCK_ID,
+		"type": "shortcut",
+		"data": {"shortcut_name": AI_SDR_SHORTCUT_LABEL, "col": 3},
+	}
+
+
+def test_crm_workspace_shortcut_install_is_idempotent() -> None:
+	content, first_changed = add_ai_sdr_shortcut_to_layout("[]")
+	updated, second_changed = add_ai_sdr_shortcut_to_layout(content)
+
+	assert first_changed is True
+	assert second_changed is False
+	assert updated == content
+
+
+def test_ai_sdr_doctype_manifests_are_present_and_safe_by_default() -> None:
+	doctype_root = PACKAGE / "loopjet_custom" / "doctype"
+	expected = {
+		"ai_sdr_settings",
+		"ai_sdr_sequence",
+		"ai_sdr_sequence_step",
+		"ai_sdr_research",
+		"ai_sdr_enrollment",
+		"ai_sdr_activity",
+		"ai_sdr_suppression",
+	}
+	assert expected.issubset({path.name for path in doctype_root.iterdir() if path.is_dir()})
+
+	settings = json.loads((doctype_root / "ai_sdr_settings" / "ai_sdr_settings.json").read_text())
+	fields = {field["fieldname"]: field for field in settings["fields"]}
+	assert fields["ai_enabled"]["default"] == "0"
+	assert fields["sending_enabled"]["default"] == "0"
+	assert fields["max_daily_emails"]["default"] == "25"
+	assert fields["ai_provider"]["default"] == "OpenRouter"
+	assert fields["ai_base_url"]["default"] == "https://openrouter.ai/api/v1"
+	assert fields["connection_status"]["default"] == "Not Tested"
+	assert fields["connection_status"]["read_only"] == 1
+
+
+def test_ai_connection_requires_a_real_provider_probe() -> None:
+	api = (PACKAGE / "ai_sdr" / "api.py").read_text()
+	services = (PACKAGE / "ai_sdr" / "services.py").read_text()
+	settings_script = (
+		PACKAGE
+		/ "loopjet_custom"
+		/ "doctype"
+		/ "ai_sdr_settings"
+		/ "ai_sdr_settings.js"
+	).read_text()
+
+	assert "test_ai_connection_service()" in api
+	assert '_record_connection_state("Connected")' in services
+	assert "complete_json(" in services
+	assert "Test {0} Connection" in settings_script
+
+
+def test_all_outbound_sequence_steps_require_human_approval() -> None:
+	controller = (
+		PACKAGE / "loopjet_custom" / "doctype" / "ai_sdr_sequence" / "ai_sdr_sequence.py"
+	).read_text()
+	step_manifest = json.loads(
+		(
+			PACKAGE / "loopjet_custom" / "doctype" / "ai_sdr_sequence_step" / "ai_sdr_sequence_step.json"
+		).read_text()
+	)
+	fields = {field["fieldname"]: field for field in step_manifest["fields"]}
+
+	assert fields["requires_approval"]["default"] == "1"
+	assert fields["requires_approval"]["read_only"] == 1
+	assert "step.requires_approval = 1" in controller
+
+
+def test_hooks_and_patch_register_ai_sdr() -> None:
+	hooks = (PACKAGE / "hooks.py").read_text()
+	patches = (PACKAGE / "patches.txt").read_text()
+
+	assert "process_due_enrollments" in hooks
+	assert "handle_received_communication" in hooks
+	assert "stop_enrollments_for_deal" in hooks
+	assert "loopjet_frappe_custom.patches.v0_2.install_ai_sdr" in patches
+
+
+def test_ai_sdr_page_never_sends_without_a_confirmation() -> None:
+	page_script = (PACKAGE / "loopjet_custom" / "page" / "ai_sdr" / "ai_sdr.js").read_text()
+
+	assert 'action === "send"' in page_script
+	assert "await this.confirm" in page_script
+	assert "send_activity" in page_script
+
+
+def test_research_form_exposes_manager_only_ai_analysis_action() -> None:
+	research_script = (
+		PACKAGE
+		/ "loopjet_custom"
+		/ "doctype"
+		/ "ai_sdr_research"
+		/ "ai_sdr_research.js"
+	).read_text()
+
+	assert "AI SDR Manager" in research_script
+	assert "Analyze with AI" in research_script
+	assert "loopjet_frappe_custom.ai_sdr.api.analyze_research" in research_script
+
+
+def test_crm_lead_actions_support_drafts_and_manager_enrollment() -> None:
+	script = _lead_form_script()
+
+	assert "Prepare AI Outreach" in script
+	assert "formDialog" in script
+	assert "get_access_context" in script
+	assert "Enroll in AI SDR Sequence" in script
+	assert "loopjet_frappe_custom.ai_sdr.api.enroll" in script
+
+
+def test_standard_crm_form_script_updates_without_a_document_save() -> None:
+	installer = (PACKAGE / "ai_sdr" / "install.py").read_text()
+
+	assert 'frappe.db.set_value("CRM Form Script", LEAD_FORM_SCRIPT_NAME, updates)' in installer

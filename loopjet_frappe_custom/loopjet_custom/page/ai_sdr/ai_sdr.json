@@ -1,0 +1,18 @@
+{
+ "creation": "2026-07-31 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2026-07-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Loopjet Custom",
+ "name": "ai-sdr",
+ "owner": "Administrator",
+ "page_name": "ai-sdr",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "AI SDR"
+}

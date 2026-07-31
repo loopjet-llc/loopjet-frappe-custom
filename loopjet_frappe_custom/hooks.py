@@ -23,3 +23,32 @@ website_redirects = [
 # Add reviewed exports here. Avoid broad, unfiltered fixtures that can capture
 # site-specific or personal configuration.
 fixtures = []
+
+doc_events = {
+	"Communication": {
+		"after_insert": "loopjet_frappe_custom.ai_sdr.services.handle_received_communication",
+	},
+	"CRM Deal": {
+		"after_insert": "loopjet_frappe_custom.ai_sdr.services.stop_enrollments_for_deal",
+	},
+}
+
+scheduler_events = {
+	"cron": {
+		"*/5 * * * *": [
+			"loopjet_frappe_custom.ai_sdr.services.process_due_enrollments",
+		],
+	},
+}
+
+permission_query_conditions = {
+	"AI SDR Research": "loopjet_frappe_custom.ai_sdr.permissions.research_query_condition",
+	"AI SDR Enrollment": "loopjet_frappe_custom.ai_sdr.permissions.enrollment_query_condition",
+	"AI SDR Activity": "loopjet_frappe_custom.ai_sdr.permissions.activity_query_condition",
+}
+
+has_permission = {
+	"AI SDR Research": "loopjet_frappe_custom.ai_sdr.permissions.has_owned_permission",
+	"AI SDR Enrollment": "loopjet_frappe_custom.ai_sdr.permissions.has_owned_permission",
+	"AI SDR Activity": "loopjet_frappe_custom.ai_sdr.permissions.has_owned_permission",
+}

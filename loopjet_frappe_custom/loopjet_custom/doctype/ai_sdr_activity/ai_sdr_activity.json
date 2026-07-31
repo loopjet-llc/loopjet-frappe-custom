@@ -1,0 +1,336 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "autoname": "format:SDR-ACT-{YYYY}-{#####}",
+ "creation": "2026-07-31 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "reference_section",
+  "enrollment",
+  "sequence",
+  "sequence_step",
+  "lead_doctype",
+  "lead",
+  "organization_doctype",
+  "organization",
+  "assigned_to",
+  "delivery_section",
+  "activity_type",
+  "channel",
+  "direction",
+  "status",
+  "recipient_name",
+  "recipient_email",
+  "subject",
+  "body",
+  "approval_section",
+  "drafting_instructions",
+  "personalization_evidence",
+  "source_urls",
+  "ai_rationale",
+  "approved_by",
+  "approved_at",
+  "rejection_reason",
+  "reply_section",
+  "reply_classification",
+  "reply_confidence",
+  "classification_reason",
+  "communication",
+  "audit_section",
+  "idempotency_key",
+  "ai_provider",
+  "ai_model",
+  "prompt_version",
+  "prompt_tokens",
+  "completion_tokens",
+  "sent_at",
+  "last_error"
+ ],
+ "fields": [
+  {
+   "fieldname": "reference_section",
+   "fieldtype": "Section Break",
+   "label": "CRM References"
+  },
+  {
+   "fieldname": "enrollment",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Enrollment",
+   "options": "AI SDR Enrollment"
+  },
+  {
+   "fieldname": "sequence",
+   "fieldtype": "Link",
+   "label": "Sequence",
+   "options": "AI SDR Sequence"
+  },
+  {
+   "default": "0",
+   "fieldname": "sequence_step",
+   "fieldtype": "Int",
+   "label": "Sequence Step"
+  },
+  {
+   "default": "CRM Lead",
+   "fieldname": "lead_doctype",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Lead Type",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "lead",
+   "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "CRM Lead",
+   "options": "lead_doctype"
+  },
+  {
+   "default": "CRM Organization",
+   "fieldname": "organization_doctype",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Organization Type",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Dynamic Link",
+   "label": "CRM Organization",
+   "options": "organization_doctype"
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Assigned To",
+   "options": "User"
+  },
+  {
+   "fieldname": "delivery_section",
+   "fieldtype": "Section Break",
+   "label": "Message"
+  },
+  {
+   "fieldname": "activity_type",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Activity Type",
+   "options": "First Touch\nFollow-up\nCall Preparation\nFinal Follow-up\nReply\nSystem",
+   "reqd": 1
+  },
+  {
+   "fieldname": "channel",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Channel",
+   "options": "Email\nLinkedIn\nCall\nSystem",
+   "reqd": 1
+  },
+  {
+   "default": "Outbound",
+   "fieldname": "direction",
+   "fieldtype": "Select",
+   "label": "Direction",
+   "options": "Outbound\nInbound\nInternal",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nGenerating\nNeeds Approval\nApproved\nRejected\nSent\nReceived\nFailed\nStopped",
+   "reqd": 1
+  },
+  {
+   "fieldname": "recipient_name",
+   "fieldtype": "Data",
+   "label": "Recipient Name"
+  },
+  {
+   "fieldname": "recipient_email",
+   "fieldtype": "Data",
+   "label": "Recipient Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "subject",
+   "fieldtype": "Small Text",
+   "label": "Subject"
+  },
+  {
+   "fieldname": "body",
+   "fieldtype": "Text Editor",
+   "label": "Message Body"
+  },
+  {
+   "fieldname": "approval_section",
+   "fieldtype": "Section Break",
+   "label": "Evidence and Approval"
+  },
+  {
+   "fieldname": "drafting_instructions",
+   "fieldtype": "Small Text",
+   "label": "Drafting Instructions"
+  },
+  {
+   "fieldname": "personalization_evidence",
+   "fieldtype": "Long Text",
+   "label": "Personalization Evidence",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_urls",
+   "fieldtype": "Small Text",
+   "label": "Source URLs",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ai_rationale",
+   "fieldtype": "Small Text",
+   "label": "AI Rationale",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_at",
+   "fieldtype": "Datetime",
+   "label": "Approved At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rejection_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejection Reason",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reply_section",
+   "fieldtype": "Section Break",
+   "label": "Reply Classification"
+  },
+  {
+   "fieldname": "reply_classification",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Reply Classification",
+   "options": "\nInterested\nNeeds Information\nReferral\nNot Now\nNot Interested\nOut of Office\nUnsubscribe\nNeeds Review",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reply_confidence",
+   "fieldtype": "Int",
+   "label": "Reply Confidence",
+   "read_only": 1
+  },
+  {
+   "fieldname": "classification_reason",
+   "fieldtype": "Small Text",
+   "label": "Classification Reason",
+   "read_only": 1
+  },
+  {
+   "fieldname": "communication",
+   "fieldtype": "Link",
+   "label": "Frappe Communication",
+   "options": "Communication",
+   "read_only": 1
+  },
+  {
+   "fieldname": "audit_section",
+   "fieldtype": "Section Break",
+   "label": "Audit"
+  },
+  {
+   "fieldname": "idempotency_key",
+   "fieldtype": "Data",
+   "label": "Idempotency Key",
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "ai_provider",
+   "fieldtype": "Data",
+   "label": "AI Provider",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ai_model",
+   "fieldtype": "Data",
+   "label": "AI Model",
+   "read_only": 1
+  },
+  {
+   "fieldname": "prompt_version",
+   "fieldtype": "Data",
+   "label": "Prompt Version",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "prompt_tokens",
+   "fieldtype": "Int",
+   "label": "Prompt Tokens",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "completion_tokens",
+   "fieldtype": "Int",
+   "label": "Completion Tokens",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sent_at",
+   "fieldtype": "Datetime",
+   "label": "Sent At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_error",
+   "fieldtype": "Small Text",
+   "label": "Last Error",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "links": [],
+ "modified": "2026-07-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Loopjet Custom",
+ "name": "AI SDR Activity",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "lead,recipient_name,recipient_email,subject",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,1 @@
+"""AI SDR Research DocType."""

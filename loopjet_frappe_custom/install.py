@@ -4,6 +4,7 @@ import frappe
 from frappe.installer import update_site_config
 from frappe.utils.caching import redis_cache
 
+from loopjet_frappe_custom.ai_sdr.install import install_ai_sdr
 from loopjet_frappe_custom.branding import install_branding
 from loopjet_frappe_custom.inbound_email import required_file_size_limit
 from loopjet_frappe_custom.portal import install_ticket_portal
@@ -24,6 +25,7 @@ def after_install() -> None:
 	install_branding()
 	install_ticket_portal()
 	install_raven_home_shortcut()
+	install_ai_sdr()
 	frappe.clear_cache()
 
 
@@ -33,6 +35,7 @@ def after_migrate() -> None:
 	install_branding()
 	install_ticket_portal()
 	install_raven_home_shortcut()
+	install_ai_sdr()
 	frappe.clear_cache()
 
 

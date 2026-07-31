@@ -4,3 +4,4 @@
 loopjet_frappe_custom.patches.v0_1.add_raven_home_shortcut
 loopjet_frappe_custom.patches.v0_1.add_raven_home_sidebar_link
 loopjet_frappe_custom.patches.v0_1.migrate_legacy_email_issues
+loopjet_frappe_custom.patches.v0_2.install_ai_sdr

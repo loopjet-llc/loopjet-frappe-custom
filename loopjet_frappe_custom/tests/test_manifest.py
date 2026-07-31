@@ -20,6 +20,9 @@ def test_frappe_metadata_exists() -> None:
 	assert "[post_model_sync]" in patches
 	assert "loopjet_frappe_custom.patches.v0_1.add_raven_home_shortcut" in patches
 	assert "loopjet_frappe_custom.patches.v0_1.migrate_legacy_email_issues" in patches
+	assert "loopjet_frappe_custom.patches.v0_2.install_ai_sdr" in patches
 	hooks = (package / "hooks.py").read_text()
 	assert "get_website_user_home_page" in hooks
 	assert '"/issues", "target": "/helpdesk/my-tickets"' in hooks
+	assert "process_due_enrollments" in hooks
+	assert "handle_received_communication" in hooks

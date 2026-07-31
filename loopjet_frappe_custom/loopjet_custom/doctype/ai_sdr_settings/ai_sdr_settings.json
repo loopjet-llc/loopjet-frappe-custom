@@ -1,0 +1,179 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-07-31 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "safety_section",
+  "ai_enabled",
+  "sending_enabled",
+  "sender_email_account",
+  "max_daily_emails",
+  "max_actions_per_run",
+  "ai_section",
+  "ai_provider",
+  "ai_base_url",
+  "ai_model",
+  "ai_api_key",
+  "ai_timeout_seconds",
+  "connection_section",
+  "connection_status",
+  "last_connection_test_at",
+  "last_connection_error",
+  "defaults_section",
+  "default_language",
+  "default_sender_name",
+  "company_context"
+ ],
+ "fields": [
+  {
+   "fieldname": "safety_section",
+   "fieldtype": "Section Break",
+   "label": "Safety Controls"
+  },
+  {
+   "default": "0",
+   "description": "Allows background AI generation. Installation leaves this disabled.",
+   "fieldname": "ai_enabled",
+   "fieldtype": "Check",
+   "label": "Enable AI Generation"
+  },
+  {
+   "default": "0",
+   "description": "Allows a manager to send an individually approved email. Installation leaves this disabled.",
+   "fieldname": "sending_enabled",
+   "fieldtype": "Check",
+   "label": "Enable Approved Email Sending"
+  },
+  {
+   "fieldname": "sender_email_account",
+   "fieldtype": "Link",
+   "label": "Sender Email Account",
+   "options": "Email Account"
+  },
+  {
+   "default": "25",
+   "fieldname": "max_daily_emails",
+   "fieldtype": "Int",
+   "label": "Maximum Daily SDR Emails"
+  },
+  {
+   "default": "20",
+   "fieldname": "max_actions_per_run",
+   "fieldtype": "Int",
+   "label": "Maximum Actions Per Scheduler Run"
+  },
+  {
+   "fieldname": "ai_section",
+   "fieldtype": "Section Break",
+   "label": "AI Provider"
+  },
+  {
+   "default": "OpenRouter",
+   "description": "OpenRouter is the supported default. A custom OpenAI-compatible endpoint may be used when explicitly selected.",
+   "fieldname": "ai_provider",
+   "fieldtype": "Select",
+   "label": "AI Provider",
+   "options": "OpenRouter\nCustom OpenAI-compatible"
+  },
+  {
+   "default": "https://openrouter.ai/api/v1",
+   "description": "OpenRouter uses https://openrouter.ai/api/v1. The completion request is sent to <base URL>/chat/completions.",
+   "fieldname": "ai_base_url",
+   "fieldtype": "Data",
+   "label": "AI Base URL"
+  },
+  {
+   "description": "Exact provider model slug. For OpenRouter, use a model ID from the OpenRouter model catalog.",
+   "fieldname": "ai_model",
+   "fieldtype": "Data",
+   "label": "AI Model"
+  },
+  {
+   "fieldname": "ai_api_key",
+   "fieldtype": "Password",
+   "label": "AI API Key"
+  },
+  {
+   "default": "60",
+   "fieldname": "ai_timeout_seconds",
+   "fieldtype": "Int",
+   "label": "AI Timeout (seconds)"
+  },
+  {
+   "fieldname": "connection_section",
+   "fieldtype": "Section Break",
+   "label": "AI Connection"
+  },
+  {
+   "default": "Not Tested",
+   "description": "Connected is set only after Loopjet receives and validates a real model response.",
+   "fieldname": "connection_status",
+   "fieldtype": "Select",
+   "label": "Connection Status",
+   "options": "Not Tested\nConnected\nFailed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_connection_test_at",
+   "fieldtype": "Datetime",
+   "label": "Last Connection Test",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_connection_error",
+   "fieldtype": "Small Text",
+   "label": "Last Connection Error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "defaults_section",
+   "fieldtype": "Section Break",
+   "label": "Defaults"
+  },
+  {
+   "default": "English",
+   "fieldname": "default_language",
+   "fieldtype": "Select",
+   "label": "Default Outreach Language",
+   "options": "English\nGerman"
+  },
+  {
+   "fieldname": "default_sender_name",
+   "fieldtype": "Data",
+   "label": "Default Sender Name"
+  },
+  {
+   "description": "Reviewed facts about Loopjet or the represented product that may be used in drafts.",
+   "fieldname": "company_context",
+   "fieldtype": "Text Editor",
+   "label": "Approved Company Context"
+  }
+ ],
+ "grid_page_length": 50,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-07-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Loopjet Custom",
+ "name": "AI SDR Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

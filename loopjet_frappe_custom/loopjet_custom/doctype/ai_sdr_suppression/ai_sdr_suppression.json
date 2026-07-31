@@ -1,0 +1,123 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "autoname": "hash",
+ "creation": "2026-07-31 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "suppression_type",
+  "suppression_key",
+  "deduplication_key",
+  "active",
+  "reason",
+  "source",
+  "expires_on",
+  "reference_section",
+  "reference_doctype",
+  "reference_name",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "suppression_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Suppression Type",
+   "options": "Email\nDomain\nLead\nOrganization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "suppression_key",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Suppression Key",
+   "reqd": 1
+  },
+  {
+   "fieldname": "deduplication_key",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Deduplication Key",
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Active"
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Reason",
+   "options": "Unsubscribe\nNot Interested\nBounce\nManual Block\nCompliance\nInvalid Address\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Select",
+   "label": "Source",
+   "options": "Inbound Reply\nEmail Delivery\nManual\nImport\nSystem",
+   "reqd": 1
+  },
+  {
+   "fieldname": "expires_on",
+   "fieldtype": "Date",
+   "label": "Expires On"
+  },
+  {
+   "fieldname": "reference_section",
+   "fieldtype": "Section Break",
+   "label": "Reference"
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reference Type",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference",
+   "options": "reference_doctype"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "grid_page_length": 50,
+ "links": [],
+ "modified": "2026-07-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Loopjet Custom",
+ "name": "AI SDR Suppression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

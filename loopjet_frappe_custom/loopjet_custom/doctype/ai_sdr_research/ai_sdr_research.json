@@ -1,0 +1,250 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "autoname": "format:SDR-RES-{YYYY}-{#####}",
+ "creation": "2026-07-31 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "account_section",
+  "organization_doctype",
+  "organization",
+  "assigned_to",
+  "website",
+  "linkedin_company_url",
+  "status",
+  "evidence_section",
+  "source_urls",
+  "source_evidence",
+  "evidence_json",
+  "analysis_section",
+  "company_summary",
+  "current_trigger",
+  "pain_hypothesis",
+  "outreach_angle",
+  "score_section",
+  "fit_score",
+  "trigger_score",
+  "persona_score",
+  "data_quality_score",
+  "icp_score",
+  "icp_tier",
+  "ai_confidence",
+  "audit_section",
+  "ai_provider",
+  "ai_model",
+  "prompt_version",
+  "researched_at",
+  "last_error"
+ ],
+ "fields": [
+  {
+   "fieldname": "account_section",
+   "fieldtype": "Section Break",
+   "label": "Target Account"
+  },
+  {
+   "default": "CRM Organization",
+   "fieldname": "organization_doctype",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Organization Type",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
+   "label": "CRM Organization",
+   "options": "organization_doctype",
+   "reqd": 1
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Assigned To",
+   "options": "User"
+  },
+  {
+   "fieldname": "website",
+   "fieldtype": "Data",
+   "label": "Website"
+  },
+  {
+   "fieldname": "linkedin_company_url",
+   "fieldtype": "Data",
+   "label": "LinkedIn Company URL"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Research Status",
+   "options": "Draft\nReady for Analysis\nAnalyzing\nReady\nStale\nRejected\nFailed",
+   "reqd": 1
+  },
+  {
+   "fieldname": "evidence_section",
+   "fieldtype": "Section Break",
+   "label": "Evidence"
+  },
+  {
+   "description": "One public source URL per line.",
+   "fieldname": "source_urls",
+   "fieldtype": "Small Text",
+   "label": "Source URLs"
+  },
+  {
+   "description": "Paste reviewed source excerpts or structured notes. AI never fetches arbitrary URLs from this field.",
+   "fieldname": "source_evidence",
+   "fieldtype": "Long Text",
+   "label": "Reviewed Source Evidence"
+  },
+  {
+   "fieldname": "evidence_json",
+   "fieldtype": "Code",
+   "label": "Structured Evidence",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "analysis_section",
+   "fieldtype": "Section Break",
+   "label": "Analysis"
+  },
+  {
+   "fieldname": "company_summary",
+   "fieldtype": "Text Editor",
+   "label": "Company Summary"
+  },
+  {
+   "fieldname": "current_trigger",
+   "fieldtype": "Small Text",
+   "label": "Current Trigger"
+  },
+  {
+   "fieldname": "pain_hypothesis",
+   "fieldtype": "Text Editor",
+   "label": "Pain Hypothesis"
+  },
+  {
+   "fieldname": "outreach_angle",
+   "fieldtype": "Text Editor",
+   "label": "Recommended Outreach Angle"
+  },
+  {
+   "fieldname": "score_section",
+   "fieldtype": "Section Break",
+   "label": "ICP Score"
+  },
+  {
+   "default": "0",
+   "fieldname": "fit_score",
+   "fieldtype": "Int",
+   "label": "Company Fit Score"
+  },
+  {
+   "default": "0",
+   "fieldname": "trigger_score",
+   "fieldtype": "Int",
+   "label": "Trigger Score"
+  },
+  {
+   "default": "0",
+   "fieldname": "persona_score",
+   "fieldtype": "Int",
+   "label": "Persona Availability Score"
+  },
+  {
+   "default": "0",
+   "fieldname": "data_quality_score",
+   "fieldtype": "Int",
+   "label": "Data Quality Score"
+  },
+  {
+   "fieldname": "icp_score",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "ICP Score",
+   "read_only": 1
+  },
+  {
+   "fieldname": "icp_tier",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "ICP Tier",
+   "options": "A\nB\nC\nD",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ai_confidence",
+   "fieldtype": "Int",
+   "label": "AI Confidence",
+   "read_only": 1
+  },
+  {
+   "fieldname": "audit_section",
+   "fieldtype": "Section Break",
+   "label": "AI Audit"
+  },
+  {
+   "fieldname": "ai_provider",
+   "fieldtype": "Data",
+   "label": "AI Provider",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ai_model",
+   "fieldtype": "Data",
+   "label": "AI Model",
+   "read_only": 1
+  },
+  {
+   "fieldname": "prompt_version",
+   "fieldtype": "Data",
+   "label": "Prompt Version",
+   "read_only": 1
+  },
+  {
+   "fieldname": "researched_at",
+   "fieldtype": "Datetime",
+   "label": "Researched At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_error",
+   "fieldtype": "Small Text",
+   "label": "Last Error",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "links": [],
+ "modified": "2026-07-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Loopjet Custom",
+ "name": "AI SDR Research",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "organization",
+ "track_changes": 1
+}
