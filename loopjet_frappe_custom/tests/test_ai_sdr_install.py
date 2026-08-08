@@ -145,6 +145,7 @@ def test_outbound_agent_api_is_bounded_and_post_protected() -> None:
 		assert f"def {method}(" in agent_api
 	assert agent_api.count('@frappe.whitelist(methods=["POST"])') == 5
 	assert agent_api.count('@frappe.whitelist(methods=["GET"])') == 2
+	assert 'kwargs.pop("cmd", None)' in agent_api
 	assert "require_agent_api_access()" in agent_api
 	assert "frappe.sendmail" not in agent_api
 

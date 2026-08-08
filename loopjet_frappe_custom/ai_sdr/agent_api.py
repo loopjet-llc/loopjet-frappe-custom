@@ -426,6 +426,10 @@ def create_outbound_lead(
 @frappe.whitelist(methods=["POST"])
 def create_lead(**kwargs) -> dict[str, Any]:
 	"""Short alias matching the agent-tool name in the architecture proposal."""
+	# Frappe includes the dotted method path as ``cmd`` when the whitelisted
+	# function accepts arbitrary keyword arguments. It is transport metadata,
+	# not part of the outbound-lead payload.
+	kwargs.pop("cmd", None)
 	return create_outbound_lead(**kwargs)
 
 
