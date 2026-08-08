@@ -5,6 +5,7 @@ from typing import Any
 
 AI_SDR_USER_ROLE = "AI SDR User"
 AI_SDR_MANAGER_ROLE = "AI SDR Manager"
+AI_SDR_AGENT_ROLE = "AI SDR Agent"
 AI_SDR_PAGE_URL = "/app/ai-sdr"
 AI_SDR_SHORTCUT_LABEL = "AI SDR"
 AI_SDR_SHORTCUT_BLOCK_ID = "loopjet-ai-sdr"
@@ -81,14 +82,19 @@ def install_ai_sdr() -> bool:
 def ensure_roles() -> None:
 	import frappe
 
-	for role_name in (AI_SDR_USER_ROLE, AI_SDR_MANAGER_ROLE):
+	for role_name in (AI_SDR_USER_ROLE, AI_SDR_MANAGER_ROLE, AI_SDR_AGENT_ROLE):
+		desk_access = int(role_name != AI_SDR_AGENT_ROLE)
 		if frappe.db.exists("Role", role_name):
+			if frappe.db.get_value("Role", role_name, "desk_access") != desk_access:
+				frappe.db.set_value("Role", role_name, "desk_access", desk_access)
 			continue
 		frappe.get_doc(
 			{
 				"doctype": "Role",
 				"role_name": role_name,
-				"desk_access": 1,
+				# The agent role authorizes only the bounded whitelisted API. It
+				# deliberately grants no generic CRM DocType permissions or Desk.
+				"desk_access": desk_access,
 				"is_custom": 1,
 			}
 		).insert(ignore_permissions=True)
@@ -181,10 +187,44 @@ def ensure_crm_custom_fields() -> None:
 				"read_only": 1,
 			},
 			{
+				"fieldname": "ai_sdr_is_company_lead",
+				"fieldtype": "Check",
+				"label": "Company Lead (Contact Not Identified)",
+				"insert_after": "ai_sdr_state",
+				"read_only": 1,
+			},
+			{
+				"fieldname": "ai_sdr_call_status",
+				"fieldtype": "Select",
+				"label": "Outbound Call Status",
+				"options": "\nNew\nResearched\nReceptionist\nContact Identified\nNo Answer\nConnected\nFollow-up\nQualified\nRejected",
+				"insert_after": "ai_sdr_is_company_lead",
+			},
+			{
+				"fieldname": "ai_sdr_last_call_outcome",
+				"fieldtype": "Small Text",
+				"label": "Last Call Outcome",
+				"insert_after": "ai_sdr_call_status",
+				"read_only": 1,
+			},
+			{
+				"fieldname": "ai_sdr_last_call_at",
+				"fieldtype": "Datetime",
+				"label": "Last Call At",
+				"insert_after": "ai_sdr_last_call_outcome",
+				"read_only": 1,
+			},
+			{
+				"fieldname": "ai_sdr_next_call_at",
+				"fieldtype": "Datetime",
+				"label": "Next Call At",
+				"insert_after": "ai_sdr_last_call_at",
+			},
+			{
 				"fieldname": "ai_sdr_do_not_contact",
 				"fieldtype": "Check",
 				"label": "Do Not Contact",
-				"insert_after": "ai_sdr_state",
+				"insert_after": "ai_sdr_next_call_at",
 			},
 			{
 				"fieldname": "ai_sdr_last_contacted_at",
@@ -210,17 +250,58 @@ def ensure_crm_custom_fields() -> None:
 				"collapsible": 1,
 			},
 			{
+				"fieldname": "ai_sdr_company_domain",
+				"fieldtype": "Data",
+				"label": "Company Domain",
+				"insert_after": "ai_sdr_section",
+				"unique": 1,
+			},
+			{
 				"fieldname": "ai_sdr_linkedin_url",
 				"fieldtype": "Data",
 				"label": "LinkedIn Company URL",
-				"insert_after": "ai_sdr_section",
+				"insert_after": "ai_sdr_company_domain",
+			},
+			{
+				"fieldname": "ai_sdr_phone",
+				"fieldtype": "Data",
+				"label": "Main Phone",
+				"options": "Phone",
+				"insert_after": "ai_sdr_linkedin_url",
+			},
+			{
+				"fieldname": "ai_sdr_country",
+				"fieldtype": "Link",
+				"label": "Country",
+				"options": "Country",
+				"insert_after": "ai_sdr_phone",
+			},
+			{
+				"fieldname": "ai_sdr_research_notes",
+				"fieldtype": "Long Text",
+				"label": "Research Notes",
+				"insert_after": "ai_sdr_country",
+			},
+			{
+				"fieldname": "ai_sdr_sales_reason",
+				"fieldtype": "Text Editor",
+				"label": "Sales Reason",
+				"insert_after": "ai_sdr_research_notes",
+			},
+			{
+				"fieldname": "ai_sdr_research_agent",
+				"fieldtype": "Link",
+				"label": "Research Agent",
+				"options": "User",
+				"insert_after": "ai_sdr_sales_reason",
+				"read_only": 1,
 			},
 			{
 				"fieldname": "ai_sdr_research_status",
 				"fieldtype": "Select",
 				"label": "Research Status",
 				"options": "\nDraft\nReady for Analysis\nAnalyzing\nReady\nStale\nRejected\nFailed",
-				"insert_after": "ai_sdr_linkedin_url",
+				"insert_after": "ai_sdr_research_agent",
 				"read_only": 1,
 			},
 			{

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from loopjet_frappe_custom.ai_sdr.install import AI_SDR_MANAGER_ROLE, AI_SDR_USER_ROLE
+from loopjet_frappe_custom.ai_sdr.install import (
+	AI_SDR_AGENT_ROLE,
+	AI_SDR_MANAGER_ROLE,
+	AI_SDR_USER_ROLE,
+)
 
 
 def has_sdr_access(user: str | None = None, *, manager: bool = False) -> bool:
@@ -24,6 +28,28 @@ def require_sdr_access(*, manager: bool = False) -> None:
 			_("AI SDR Manager permission is required." if manager else "AI SDR access is required."),
 			frappe.PermissionError,
 		)
+
+
+def has_agent_api_access(user: str | None = None) -> bool:
+	"""Authorize the bounded machine API without granting generic CRM access."""
+	import frappe
+
+	user = user or frappe.session.user
+	roles = set(frappe.get_roles(user))
+	return bool(
+		user == "Administrator"
+		or "System Manager" in roles
+		or AI_SDR_MANAGER_ROLE in roles
+		or AI_SDR_AGENT_ROLE in roles
+	)
+
+
+def require_agent_api_access() -> None:
+	import frappe
+	from frappe import _
+
+	if not has_agent_api_access():
+		frappe.throw(_("AI SDR Agent permission is required."), frappe.PermissionError)
 
 
 def _owned_query_condition(doctype: str, user: str | None = None) -> str:

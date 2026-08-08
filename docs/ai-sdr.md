@@ -42,11 +42,18 @@ The workflow is:
   LinkedIn/call completion.
 - `AI SDR Manager`: manage all AI SDR records, enroll leads, approve or reject
   outreach, and send approved email.
+- `AI SDR Agent`: API-only integration role for the bounded prospect research,
+  contact, call-note, and call-list methods. It grants no Desk or generic CRM
+  DocType access.
 - `System Manager`: configure the provider, sender account, limits, and feature
   switches.
 
 Assign the smallest role each person needs. Record-level query conditions keep
 regular users limited to records they own or that are assigned to them.
+
+For an external research agent, create a dedicated enabled Frappe user, assign
+only `AI SDR Agent`, and generate that user's API key and secret. See
+[AI SDR agent API](ai-sdr-agent-api.md) for the exact HTTP surface.
 
 ## Initial configuration
 

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from loopjet_frappe_custom.ai_sdr.install import (
+	AI_SDR_AGENT_ROLE,
 	AI_SDR_SHORTCUT_BLOCK_ID,
 	AI_SDR_SHORTCUT_LABEL,
 	_lead_form_script,
@@ -115,6 +116,37 @@ def test_hooks_and_patch_register_ai_sdr() -> None:
 	assert "handle_received_communication" in hooks
 	assert "stop_enrollments_for_deal" in hooks
 	assert "loopjet_frappe_custom.patches.v0_2.install_ai_sdr" in patches
+	assert "loopjet_frappe_custom.patches.v0_3.install_outbound_agent_api" in patches
+
+
+def test_outbound_agent_api_is_bounded_and_post_protected() -> None:
+	installer = (PACKAGE / "ai_sdr" / "install.py").read_text()
+	agent_api = (PACKAGE / "ai_sdr" / "agent_api.py").read_text()
+
+	assert AI_SDR_AGENT_ROLE == "AI SDR Agent"
+	assert "desk_access = int(role_name != AI_SDR_AGENT_ROLE)" in installer
+	for fieldname in (
+		"ai_sdr_company_domain",
+		"ai_sdr_research_notes",
+		"ai_sdr_sales_reason",
+		"ai_sdr_research_agent",
+		"ai_sdr_call_status",
+		"ai_sdr_next_call_at",
+	):
+		assert fieldname in installer
+	for method in (
+		"search_lead",
+		"create_lead",
+		"update_lead",
+		"add_contact_person",
+		"add_call_note",
+		"get_next_call_list",
+	):
+		assert f"def {method}(" in agent_api
+	assert agent_api.count('@frappe.whitelist(methods=["POST"])') == 5
+	assert agent_api.count('@frappe.whitelist(methods=["GET"])') == 2
+	assert "require_agent_api_access()" in agent_api
+	assert "frappe.sendmail" not in agent_api
 
 
 def test_ai_sdr_page_never_sends_without_a_confirmation() -> None:

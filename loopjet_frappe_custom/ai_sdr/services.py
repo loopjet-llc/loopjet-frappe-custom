@@ -22,6 +22,7 @@ from loopjet_frappe_custom.ai_sdr.domain import (
 	classify_reply_fallback,
 	has_unresolved_template,
 	next_action_at,
+	normalize_domain,
 	normalize_suppression_key,
 	render_safe_template,
 	suppression_candidates,
@@ -741,14 +742,19 @@ def _sync_lead_state(enrollment, *, state: str, contacted_at=None) -> None:
 def is_suppressed(
 	*,
 	email: str | None = None,
+	domain: str | None = None,
 	lead: str | None = None,
 	organization: str | None = None,
 ) -> bool:
-	for suppression_type, key in suppression_candidates(
+	candidates = suppression_candidates(
 		email=email,
 		lead=lead,
 		organization=organization,
-	):
+	)
+	normalized_domain = normalize_domain(domain)
+	if normalized_domain and ("Domain", normalized_domain) not in candidates:
+		candidates.append(("Domain", normalized_domain))
+	for suppression_type, key in candidates:
 		names = frappe.get_all(
 			"AI SDR Suppression",
 			filters={

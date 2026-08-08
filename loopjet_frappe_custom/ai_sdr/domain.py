@@ -135,12 +135,55 @@ def normalize_email(value: str | None) -> str:
 
 
 def normalize_domain(value: str | None) -> str:
+	"""Return a canonical host value for suppression matching.
+
+	Any path, port, credentials, or fragment is removed. Subdomains remain
+	distinct so existing domain-suppression keys keep their original semantics.
+	"""
 	domain = (value or "").strip().casefold()
-	if "@" in domain:
+	if not domain:
+		return ""
+	if "@" in domain and "://" not in domain:
 		domain = domain.rsplit("@", 1)[1]
-	if "://" in domain:
-		domain = urlparse(domain).hostname or ""
-	return domain.strip(".")
+	parsed = urlparse(domain if "://" in domain else f"//{domain}")
+	domain = (parsed.hostname or "").strip(".")
+	if not domain or any(character.isspace() for character in domain):
+		return ""
+	try:
+		return domain.encode("idna").decode("ascii")
+	except UnicodeError:
+		return ""
+
+
+def normalize_company_domain(value: str | None) -> str:
+	"""Normalize a company duplicate key and ignore the presentation-only www prefix."""
+	domain = normalize_domain(value)
+	return domain[4:] if domain.startswith("www.") else domain
+
+
+def canonical_company_website(value: str | None) -> str:
+	"""Normalize a company website to a stable HTTPS origin."""
+	domain = normalize_company_domain(value)
+	return f"https://{domain}" if domain else ""
+
+
+def normalize_outbound_icp_score(value: Any) -> int:
+	"""Accept either the proposal's 0-10 score or the workspace's 0-100 score."""
+	try:
+		numeric = float(value)
+	except (TypeError, ValueError):
+		return 0
+	if 0 <= numeric <= 10:
+		numeric *= 10
+	return clamp_score(numeric)
+
+
+def split_person_name(value: str | None) -> tuple[str, str]:
+	"""Split a reviewed display name without guessing titles or salutations."""
+	parts = (value or "").strip().split(maxsplit=1)
+	if not parts:
+		return "", ""
+	return parts[0], parts[1] if len(parts) > 1 else ""
 
 
 def normalize_suppression_key(suppression_type: str, value: str | None) -> str:

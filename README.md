@@ -47,4 +47,5 @@ LinkedIn and call steps are always manual, and every outbound step requires
 recorded human approval.
 
 See [AI SDR operations](docs/ai-sdr.md) for roles, configuration, daily use,
-safety boundaries, and production rollout.
+safety boundaries, and production rollout. The bounded integration-user methods
+and payloads are documented in [AI SDR agent API](docs/ai-sdr-agent-api.md).

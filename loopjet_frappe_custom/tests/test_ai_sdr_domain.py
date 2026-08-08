@@ -8,14 +8,19 @@ import pytest
 from loopjet_frappe_custom.ai_sdr.domain import (
 	REPLY_INTERESTED,
 	REPLY_UNSUBSCRIBE,
+	canonical_company_website,
 	classify_reply_fallback,
 	compute_icp_score,
 	extract_json_object,
 	has_unresolved_template,
 	icp_tier,
 	next_action_at,
+	normalize_company_domain,
+	normalize_domain,
+	normalize_outbound_icp_score,
 	normalize_suppression_key,
 	render_safe_template,
+	split_person_name,
 	suppression_candidates,
 	validate_outreach_result,
 )
@@ -78,6 +83,16 @@ def test_suppression_normalization_covers_email_and_domain() -> None:
 		("Domain", "example.com"),
 		("Lead", "CRM-LEAD-1"),
 	]
+
+
+def test_outbound_company_normalization_handles_plain_urls_and_score_scales() -> None:
+	assert normalize_domain("www.Muster.DE/about") == "www.muster.de"
+	assert normalize_company_domain("www.Muster.DE/about") == "muster.de"
+	assert normalize_company_domain("https://user:secret@WWW.Muster.DE:8443/about") == "muster.de"
+	assert canonical_company_website("http://www.Muster.DE/about") == "https://muster.de"
+	assert normalize_outbound_icp_score(9) == 90
+	assert normalize_outbound_icp_score(87) == 87
+	assert split_person_name("Ada Lovelace") == ("Ada", "Lovelace")
 
 
 def test_next_action_never_schedules_in_the_past() -> None:
