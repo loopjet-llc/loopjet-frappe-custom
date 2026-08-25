@@ -27,3 +27,5 @@ def test_frappe_metadata_exists() -> None:
 	assert '"/issues", "target": "/helpdesk/my-tickets"' in hooks
 	assert "process_due_enrollments" in hooks
 	assert "handle_received_communication" in hooks
+	assert "notify_ticket_update" in hooks
+	assert "notify_ticket_comment" in hooks
