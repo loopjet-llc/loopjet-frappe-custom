@@ -127,3 +127,19 @@ def test_comment_email_contains_comment_and_escapes_ticket_metadata() -> None:
 	assert build_notification_subject("0047", "CloudMensa", is_comment=True) == (
 		"Neuer Kommentar: #0047 - CloudMensa"
 	)
+
+
+def test_internal_comment_hooks_never_send_customer_email(monkeypatch) -> None:
+	def fail_if_called(*args, **kwargs):
+		raise AssertionError("internal comments must never trigger customer email")
+
+	monkeypatch.setattr(notifications, "_send_customer_notification", fail_if_called)
+	comment = SimpleNamespace(
+		name="COMMENT-0001",
+		reference_ticket="TICKET-0001",
+		commented_by="agent@example.com",
+		content="Internal only",
+	)
+
+	assert notifications.notify_ticket_comment(comment) is None
+	assert notifications.notify_ticket_comment_update(comment) is None

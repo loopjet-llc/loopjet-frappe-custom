@@ -315,39 +315,11 @@ def notify_ticket_update(doc: Any, method: str | None = None) -> None:
 		_log_notification_error(getattr(doc, "name", "unknown"))
 
 
-def _notify_comment(doc: Any, *, actor_user: str, comment_updated: bool) -> None:
-	if not _is_helpdesk_agent(actor_user):
-		return
-	ticket = frappe.get_doc("HD Ticket", doc.reference_ticket)
-	comment_html = frappe.utils.sanitize_html(doc.content or "")
-	_send_customer_notification(
-		ticket,
-		actor_user=actor_user,
-		comment_html=comment_html,
-		comment_updated=comment_updated,
-	)
-
-
 def notify_ticket_comment(doc: Any, method: str | None = None) -> None:
-	if frappe is None:  # pragma: no cover - runtime guard
-		return
-	try:
-		_notify_comment(
-			doc,
-			actor_user=doc.commented_by or frappe.session.user,
-			comment_updated=False,
-		)
-	except Exception:
-		_log_notification_error(getattr(doc, "reference_ticket", "unknown"))
+	"""Legacy compatibility hook: internal comments must never email customers."""
+	return None
 
 
 def notify_ticket_comment_update(doc: Any, method: str | None = None) -> None:
-	if frappe is None:  # pragma: no cover - runtime guard
-		return
-	try:
-		before = doc.get_doc_before_save()
-		if not before or before.content == doc.content:
-			return
-		_notify_comment(doc, actor_user=frappe.session.user, comment_updated=True)
-	except Exception:
-		_log_notification_error(getattr(doc, "reference_ticket", "unknown"))
+	"""Legacy compatibility hook: edits to internal comments stay internal."""
+	return None

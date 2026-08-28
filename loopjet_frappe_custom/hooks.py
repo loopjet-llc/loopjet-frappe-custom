@@ -28,10 +28,6 @@ doc_events = {
 	"HD Ticket": {
 		"on_update": "loopjet_frappe_custom.helpdesk_notifications.notify_ticket_update",
 	},
-	"HD Ticket Comment": {
-		"after_insert": "loopjet_frappe_custom.helpdesk_notifications.notify_ticket_comment",
-		"on_update": "loopjet_frappe_custom.helpdesk_notifications.notify_ticket_comment_update",
-	},
 	"Communication": {
 		"after_insert": "loopjet_frappe_custom.ai_sdr.services.handle_received_communication",
 	},
