@@ -773,9 +773,31 @@ def resend_inbound() -> dict[str, Any]:
 			return {"ok": True, "duplicate": True, "ticket": existing_ticket}
 
 		ticket_name = _create_ticket(fallback_payload, api_key=None)
+		_create_recovery_task(ticket_name, email_id, event_data.get("from"))
 		return {
 			"ok": True,
 			"ticket": ticket_name,
 			"body_fetched": False,
 			"degraded": True,
 		}
+
+
+def _create_recovery_task(ticket_name: str, email_id: str, sender: str | None) -> str | None:
+	"""Create one native Ahmad next-action for degraded inbound processing."""
+	if not frappe.db.exists("DocType", "CRM Task"):
+		return None
+	title = f"[Loopjet inbound recovery] Review {email_id or 'received email'}"
+	if frappe.db.exists("CRM Task", {"title": title, "reference_doctype": "HD Ticket", "reference_docname": ticket_name}):
+		return None
+	assignee = "ahmad@el-ali.de" if frappe.db.exists("User", "ahmad@el-ali.de") else frappe.session.user
+	return frappe.get_doc({
+		"doctype": "CRM Task",
+		"title": title,
+		"priority": "High",
+		"assigned_to": assignee,
+		"status": "Todo",
+		"due_date": frappe.utils.now(),
+		"description": f"Inbound Resend processing degraded; review recovery ticket. Sender: {sender or 'unknown'}.",
+		"reference_doctype": "HD Ticket",
+		"reference_docname": ticket_name,
+	}).insert(ignore_permissions=True).name
