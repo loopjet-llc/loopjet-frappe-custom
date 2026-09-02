@@ -1,0 +1,21 @@
+{
+ "creation": "2026-09-02 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2026-09-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Loopjet Custom",
+ "name": "founder-cockpit",
+ "owner": "Administrator",
+ "page_name": "founder-cockpit",
+ "roles": [
+  {"role": "System Manager"},
+  {"role": "Founder Cockpit User"}
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Founder Cockpit"
+}

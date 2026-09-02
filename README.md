@@ -49,3 +49,16 @@ recorded human approval.
 See [AI SDR operations](docs/ai-sdr.md) for roles, configuration, daily use,
 safety boundaries, and production rollout. The bounded integration-user methods
 and payloads are documented in [AI SDR agent API](docs/ai-sdr-agent-api.md).
+
+## Founder Cockpit
+
+The Desk page `/app/founder-cockpit` provides a permission-aware operating
+cockpit for founder decisions across CRM, Helpdesk, Accounts, Projects, native
+assignments, and operational logs. It deduplicates actionable exceptions into
+`Needs my decision`, `Today`, and `Watchlist`; normal healthy activity remains
+hidden. The daily native digest is disabled by default, and the cockpit never
+submits invoices, sends customer messages, retries integrations, or performs
+destructive actions.
+
+See [Founder Cockpit operations](docs/founder-cockpit.md) for connected sources,
+RBAC, privacy boundaries, settings, unconnected integrations, and rollout steps.

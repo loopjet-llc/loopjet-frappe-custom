@@ -34,6 +34,9 @@ doc_events = {
 }
 
 scheduler_events = {
+	"hourly": [
+		"loopjet_frappe_custom.founder_cockpit.api.prepare_daily_digest",
+	],
 	"cron": {
 		"*/5 * * * *": [
 			"loopjet_frappe_custom.ai_sdr.services.process_due_enrollments",
@@ -45,10 +48,12 @@ permission_query_conditions = {
 	"AI SDR Research": "loopjet_frappe_custom.ai_sdr.permissions.research_query_condition",
 	"AI SDR Enrollment": "loopjet_frappe_custom.ai_sdr.permissions.enrollment_query_condition",
 	"AI SDR Activity": "loopjet_frappe_custom.ai_sdr.permissions.activity_query_condition",
+	"Founder Cockpit State": "loopjet_frappe_custom.founder_cockpit.permissions.state_query_condition",
 }
 
 has_permission = {
 	"AI SDR Research": "loopjet_frappe_custom.ai_sdr.permissions.has_owned_permission",
 	"AI SDR Enrollment": "loopjet_frappe_custom.ai_sdr.permissions.has_owned_permission",
 	"AI SDR Activity": "loopjet_frappe_custom.ai_sdr.permissions.has_owned_permission",
+	"Founder Cockpit State": "loopjet_frappe_custom.founder_cockpit.permissions.has_owned_permission",
 }
