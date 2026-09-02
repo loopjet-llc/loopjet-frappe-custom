@@ -1,0 +1,236 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-09-02 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "priority_section",
+  "critical_priority_score",
+  "high_priority_score",
+  "medium_priority_score",
+  "column_break_priority",
+  "sales_base_score",
+  "clients_base_score",
+  "finance_base_score",
+  "operations_base_score",
+  "team_base_score",
+  "threshold_section",
+  "lead_stale_days",
+  "deal_stale_days",
+  "quotation_action_window_days",
+  "column_break_thresholds",
+  "operational_lookback_hours",
+  "repeated_error_threshold",
+  "ignored_error_methods",
+  "display_section",
+  "age_boost_days",
+  "max_cards",
+  "max_records_per_source",
+  "acknowledge_hours",
+  "digest_section",
+  "notification_mode",
+  "daily_digest_enabled",
+  "digest_user",
+  "daily_digest_hour",
+  "last_digest_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "priority_section",
+   "fieldtype": "Section Break",
+   "label": "Unified Priority Model"
+  },
+  {
+   "default": "90",
+   "fieldname": "critical_priority_score",
+   "fieldtype": "Int",
+   "label": "Critical Score"
+  },
+  {
+   "default": "75",
+   "fieldname": "high_priority_score",
+   "fieldtype": "Int",
+   "label": "High Score"
+  },
+  {
+   "default": "50",
+   "fieldname": "medium_priority_score",
+   "fieldtype": "Int",
+   "label": "Medium Score"
+  },
+  {
+   "fieldname": "column_break_priority",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "76",
+   "fieldname": "sales_base_score",
+   "fieldtype": "Int",
+   "label": "Sales Base Score"
+  },
+  {
+   "default": "74",
+   "fieldname": "clients_base_score",
+   "fieldtype": "Int",
+   "label": "Clients Base Score"
+  },
+  {
+   "default": "82",
+   "fieldname": "finance_base_score",
+   "fieldtype": "Int",
+   "label": "Finance Base Score"
+  },
+  {
+   "default": "84",
+   "fieldname": "operations_base_score",
+   "fieldtype": "Int",
+   "label": "Operations Base Score"
+  },
+  {
+   "default": "72",
+   "fieldname": "team_base_score",
+   "fieldtype": "Int",
+   "label": "Team Base Score"
+  },
+  {
+   "fieldname": "threshold_section",
+   "fieldtype": "Section Break",
+   "label": "Exception Thresholds"
+  },
+  {
+   "default": "5",
+   "fieldname": "lead_stale_days",
+   "fieldtype": "Int",
+   "label": "Priority Lead Stale After (days)"
+  },
+  {
+   "default": "7",
+   "fieldname": "deal_stale_days",
+   "fieldtype": "Int",
+   "label": "Deal Stale After (days)"
+  },
+  {
+   "default": "3",
+   "fieldname": "quotation_action_window_days",
+   "fieldtype": "Int",
+   "label": "Quotation Action Window (days)"
+  },
+  {
+   "fieldname": "column_break_thresholds",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "48",
+   "fieldname": "operational_lookback_hours",
+   "fieldtype": "Int",
+   "label": "Operational Lookback (hours)"
+  },
+  {
+   "default": "2",
+   "fieldname": "repeated_error_threshold",
+   "fieldtype": "Int",
+   "label": "Repeated Error Threshold"
+  },
+  {
+   "default": "Session Stopped\nfrappe.utils.change_log.check_for_update",
+   "description": "One non-actionable Error Log method substring per line.",
+   "fieldname": "ignored_error_methods",
+   "fieldtype": "Small Text",
+   "label": "Ignored Error Methods"
+  },
+  {
+   "fieldname": "display_section",
+   "fieldtype": "Section Break",
+   "label": "Display and Acknowledgement"
+  },
+  {
+   "default": "7",
+   "fieldname": "age_boost_days",
+   "fieldtype": "Int",
+   "label": "Age Boost Interval (days)"
+  },
+  {
+   "default": "100",
+   "fieldname": "max_cards",
+   "fieldtype": "Int",
+   "label": "Maximum Cards Per Surface"
+  },
+  {
+   "default": "100",
+   "fieldname": "max_records_per_source",
+   "fieldtype": "Int",
+   "label": "Maximum Records Per Source"
+  },
+  {
+   "default": "24",
+   "description": "Acknowledgement is temporary. A changed exception condition gets a new card identifier and reappears.",
+   "fieldname": "acknowledge_hours",
+   "fieldtype": "Int",
+   "label": "Acknowledge For (hours)"
+  },
+  {
+   "fieldname": "digest_section",
+   "fieldtype": "Section Break",
+   "label": "Daily Digest"
+  },
+  {
+   "default": "Off",
+   "description": "External email, chat, and push channels are intentionally unavailable in this release.",
+   "fieldname": "notification_mode",
+   "fieldtype": "Select",
+   "label": "Notification Mode",
+   "options": "Off\nNative ToDo"
+  },
+  {
+   "default": "0",
+   "fieldname": "daily_digest_enabled",
+   "fieldtype": "Check",
+   "label": "Enable Daily Digest"
+  },
+  {
+   "fieldname": "digest_user",
+   "fieldtype": "Link",
+   "label": "Digest User",
+   "options": "User"
+  },
+  {
+   "default": "8",
+   "description": "The native digest is prepared during this site-local hour.",
+   "fieldname": "daily_digest_hour",
+   "fieldtype": "Int",
+   "label": "Digest Hour (0-23)"
+  },
+  {
+   "fieldname": "last_digest_on",
+   "fieldtype": "Date",
+   "label": "Last Digest On",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-09-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Loopjet Custom",
+ "name": "Founder Cockpit Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
