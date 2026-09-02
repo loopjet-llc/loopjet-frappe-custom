@@ -1,6 +1,11 @@
 from types import SimpleNamespace
 
 import loopjet_frappe_custom.helpdesk_notifications as notifications
+from loopjet_frappe_custom.email_branding import (
+	LOOPJET_SUPPORT_PROFILE,
+	render_loopjet_signature,
+	resolve_email_brand,
+)
 from loopjet_frappe_custom.helpdesk_notifications import (
 	build_notification_message,
 	build_notification_subject,
@@ -106,6 +111,13 @@ def test_change_email_contains_actor_diff_and_direct_ticket_link() -> None:
 	assert "Mittel" in message
 	assert "Hoch" in message
 	assert "https://helpdesk.loopjet.io/helpdesk/my-tickets/0047" in message
+	assert "Loopjet LLC" in message
+	assert "support@loopjet.io" in message
+	assert "#0891b2" in message
+	assert "LearnLayer" not in message
+	assert "academy@learnlayer.io" not in message
+	assert "reply.learnlayer.io" not in message
+	assert "#6d28d9" not in message
 	assert build_notification_subject("0047", "CloudMensa Rechtevergabe") == (
 		"Ticket aktualisiert: #0047 - CloudMensa Rechtevergabe"
 	)
@@ -143,3 +155,57 @@ def test_internal_comment_hooks_never_send_customer_email(monkeypatch) -> None:
 
 	assert notifications.notify_ticket_comment(comment) is None
 	assert notifications.notify_ticket_comment_update(comment) is None
+
+
+def test_loopjet_signature_requires_the_configured_loopjet_sender() -> None:
+	assert LOOPJET_SUPPORT_PROFILE.formatted_sender == "Ahmad El-Ali | Loopjet LLC <support@loopjet.io>"
+	signature = render_loopjet_signature(sender=LOOPJET_SUPPORT_PROFILE.formatted_sender)
+	assert 'data-email-brand="loopjet"' in signature
+	assert "Ahmad El-Ali" in signature
+	assert "Loopjet LLC" in signature
+	assert "support@loopjet.io" in signature
+	assert "LearnLayer" not in signature
+	assert "#6d28d9" not in signature
+
+	for sender in ("academy@learnlayer.io", "replies@reply.learnlayer.io"):
+		try:
+			resolve_email_brand(brand="loopjet", sender=sender)
+		except ValueError as exc:
+			assert str(exc) == "email_brand_sender_mismatch"
+		else:
+			raise AssertionError("Academy sender must never resolve as Loopjet")
+
+
+def test_customer_notification_uses_loopjet_sender_and_reply_to(monkeypatch) -> None:
+	captured = {}
+
+	class FakeConf:
+		@staticmethod
+		def get(key):
+			return None
+
+	class FakeFrappe:
+		conf = FakeConf()
+
+		@staticmethod
+		def sendmail(**kwargs):
+			captured.update(kwargs)
+
+	monkeypatch.setattr(notifications, "frappe", FakeFrappe())
+	ticket = SimpleNamespace(
+		name="TEST-0001",
+		subject="Isolierter Absendertest",
+		raised_by="ahmad@el-ali.de",
+		contact=None,
+		customer=None,
+	)
+	notifications._send_customer_notification(
+		ticket,
+		actor_user="Administrator",
+		comment_html="<p>Vorschau ohne Kundenbezug.</p>",
+	)
+
+	assert captured["recipients"] == ["ahmad@el-ali.de"]
+	assert captured["sender"] == "Ahmad El-Ali | Loopjet LLC <support@loopjet.io>"
+	assert captured["reply_to"] == "support@loopjet.io"
+	assert "Academy" not in captured["message"]

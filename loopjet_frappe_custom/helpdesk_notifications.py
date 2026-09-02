@@ -7,13 +7,14 @@ from html import escape
 from typing import Any
 from urllib.parse import quote
 
+from loopjet_frappe_custom.email_branding import LOOPJET_SUPPORT_PROFILE, render_loopjet_signature
+
 try:
 	import frappe
 except ImportError:  # pragma: no cover - lets helper tests run outside a Frappe bench
 	frappe = None  # type: ignore[assignment]
-
-
-SUPPORT_SENDER = "Loopjet Support <support@loopjet.io>"
+SUPPORT_SENDER = LOOPJET_SUPPORT_PROFILE.formatted_sender
+SUPPORT_REPLY_TO = LOOPJET_SUPPORT_PROFILE.sender_email
 DEFAULT_HELPDESK_PORTAL_URL = "https://helpdesk.loopjet.io"
 NOTIFICATION_HEADER = "loopjet-helpdesk-customer-update"
 AGENT_ROLES = {"Agent", "Agent Manager", "System Manager"}
@@ -171,7 +172,8 @@ def build_notification_message(
 			'<p style="margin:24px 0">'
 			f'<a href="{url}" style="display:inline-block;background:#14161c;color:#ffffff;text-decoration:none;'
 			'padding:11px 18px;border-radius:8px;font-weight:700">Ticket im Helpdesk öffnen</a></p>',
-			'<p style="font-size:12px;color:#8b94a6;margin-top:28px">'
+			render_loopjet_signature(sender=SUPPORT_SENDER),
+			'<p style="font-size:12px;color:#8b94a6;margin-top:22px">'
 			"Diese Nachricht wurde automatisch vom Loopjet Helpdesk gesendet. "
 			"Weitere Details und Antworten findest du direkt im Ticket.</p>",
 			"</div>",
@@ -277,6 +279,7 @@ def _send_customer_notification(
 	frappe.sendmail(
 		recipients=recipients,
 		sender=SUPPORT_SENDER,
+		reply_to=SUPPORT_REPLY_TO,
 		subject=build_notification_subject(
 			ticket.name,
 			ticket.subject,

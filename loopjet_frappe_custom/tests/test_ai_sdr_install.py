@@ -190,6 +190,8 @@ def test_crm_lead_actions_support_drafts_and_manager_enrollment() -> None:
 	assert "loopjet_frappe_custom.ai_sdr.api.enroll" in script
 	assert "Send LearnLayer Academy Email" in script
 	assert "Learnlayer Academy" in script
+	assert "Ahmad El-Ali signature" in script
+	assert "Ahmad Alali" not in script
 	assert "window.confirm" in script
 	assert "loopjet_frappe_custom.ai_sdr.api.send_academy_email" in script
 

@@ -675,10 +675,11 @@ OFFER_EMAIL_HTML = """
 
 
 HELPDESK_EMAIL_HTML = """
-<div style="font-family:Inter,Arial,sans-serif;color:#14161c;line-height:1.55">
+<div data-email-brand="loopjet" style="font-family:Inter,Arial,sans-serif;color:#14161c;line-height:1.55">
+	<div style="height:4px;background:#0891b2;margin-bottom:24px"></div>
 	<p>Hi {{ raised_by or customer or "there" }},</p>
 	<p>Thanks for reaching out to Loopjet Support. We have received your request{% if name %} <strong>{{ name }}</strong>{% endif %} and will keep you updated here.</p>
-	<p style="margin-top:24px;color:#5d6470">Best,<br>Loopjet Support</p>
+	<p style="margin-top:24px;padding-top:18px;border-top:1px solid #d6dde5;color:#334155">Best,<br><strong style="color:#0f172a">Ahmad El-Ali</strong><br>Loopjet LLC<br><a href="mailto:support@loopjet.io" style="color:#0891b2;text-decoration:none">support@loopjet.io</a></p>
 </div>
 """
 

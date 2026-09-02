@@ -380,7 +380,7 @@ def _lead_form_script() -> str:
 					fieldname: "body",
 					fieldtype: "Long Text",
 					label: __("Message Body"),
-					description: __("The verified LearnLayer visual form, Ahmad Alali signature and opt-out footer are added automatically."),
+					description: __("The verified LearnLayer visual form, Ahmad El-Ali signature and opt-out footer are added automatically."),
 					reqd: 1
 				}
 			],
