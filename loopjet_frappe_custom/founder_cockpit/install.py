@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 FOUNDER_COCKPIT_ROLE = "Founder Cockpit User"
@@ -218,6 +219,74 @@ def _ensure_desktop_icon() -> bool:
 	return changed
 
 
+def _merge_desktop_layout(layout_json: str | None) -> tuple[str | None, bool]:
+	"""Keep a saved desktop layout while adding the required cockpit icon."""
+	if not layout_json:
+		return layout_json, False
+	try:
+		layout = json.loads(layout_json)
+	except (TypeError, ValueError):
+		return layout_json, False
+	if not isinstance(layout, list):
+		return layout_json, False
+	if any(
+		isinstance(row, dict)
+		and (
+			row.get("label") == FOUNDER_COCKPIT_LABEL
+			or (
+				row.get("link_type") == "Workspace Sidebar"
+				and row.get("link_to") == FOUNDER_COCKPIT_LABEL
+			)
+		)
+		for row in layout
+	):
+		return layout_json, False
+
+	layout.insert(
+		0,
+		{
+			"app": "loopjet_frappe_custom",
+			"bg_color": "blue",
+			"child_icons": [],
+			"hidden": 0,
+			"icon": FOUNDER_COCKPIT_ICON,
+			"icon_image": None,
+			"icon_type": "Link",
+			"idx": 0,
+			"label": FOUNDER_COCKPIT_LABEL,
+			"link": None,
+			"link_to": FOUNDER_COCKPIT_LABEL,
+			"link_type": "Workspace Sidebar",
+			"logo_url": None,
+			"name": FOUNDER_COCKPIT_LABEL,
+			"parent_icon": "",
+			"restrict_removal": 1,
+			"standard": 0,
+		},
+	)
+	return json.dumps(layout), True
+
+
+def _ensure_saved_desktop_layouts() -> bool:
+	"""Add the cockpit to eligible users whose custom layout replaces boot icons."""
+	import frappe
+	from frappe.desk.doctype.desktop_icon.desktop_icon import clear_desktop_icons_cache
+
+	changed = False
+	allowed_roles = {"System Manager", FOUNDER_COCKPIT_ROLE}
+	for user in frappe.get_all("Desktop Layout", pluck="name"):
+		if not allowed_roles.intersection(frappe.get_roles(user)):
+			continue
+		layout_json = frappe.db.get_value("Desktop Layout", user, "layout")
+		merged_layout, layout_changed = _merge_desktop_layout(layout_json)
+		if not layout_changed:
+			continue
+		frappe.db.set_value("Desktop Layout", user, "layout", merged_layout, update_modified=False)
+		clear_desktop_icons_cache(user=user)
+		changed = True
+	return changed
+
+
 def _ensure_sidebar_link() -> bool:
 	import frappe
 
@@ -271,6 +340,7 @@ def install_founder_cockpit() -> bool:
 	changed = _ensure_workspace() or changed
 	changed = _ensure_cockpit_sidebar() or changed
 	changed = _ensure_desktop_icon() or changed
+	changed = _ensure_saved_desktop_layouts() or changed
 	changed = _ensure_sidebar_link() or changed
 	if changed:
 		frappe.cache.delete_key("desktop_icons")

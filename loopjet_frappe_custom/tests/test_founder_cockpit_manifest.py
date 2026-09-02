@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from loopjet_frappe_custom.founder_cockpit.install import _merge_desktop_layout
+
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "loopjet_frappe_custom"
 
@@ -56,6 +58,31 @@ def test_page_install_and_hooks_register_rbac_workspace_and_disabled_digest_arch
 	assert '"Founder Cockpit State"' in hooks
 	assert "prepare_daily_digest" in hooks
 	assert "install_founder_cockpit" in patches
+
+
+def test_saved_desktop_layout_keeps_existing_icons_and_adds_cockpit_once() -> None:
+	original = json.dumps(
+		[
+			{
+				"label": "Framework",
+				"icon_type": "Link",
+				"link_type": "Workspace Sidebar",
+				"link_to": "Framework",
+			}
+		]
+	)
+
+	merged, changed = _merge_desktop_layout(original)
+	assert changed is True
+	layout = json.loads(merged)
+	assert [row["label"] for row in layout] == ["Founder Cockpit", "Framework"]
+	assert layout[0]["link_type"] == "Workspace Sidebar"
+	assert layout[0]["link_to"] == "Founder Cockpit"
+	assert layout[0]["restrict_removal"] == 1
+
+	merged_again, changed_again = _merge_desktop_layout(merged)
+	assert changed_again is False
+	assert merged_again == merged
 
 
 def test_cockpit_api_exposes_only_safe_page_mutations() -> None:
