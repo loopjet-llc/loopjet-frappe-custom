@@ -154,6 +154,7 @@ def test_outbound_agent_api_is_bounded_and_post_protected() -> None:
 	assert "require_agent_api_access()" in agent_api
 	assert 'ACADEMY_TAG = "Learnlayer Academy"' in agent_api
 	assert "ACADEMY_OUTBOUND_EVENT_PREFIX" in agent_api
+	assert '"diagnostic_received"' in agent_api
 	assert "frappe.sendmail" not in agent_api
 
 

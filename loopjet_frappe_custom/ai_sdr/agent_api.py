@@ -54,6 +54,7 @@ ACADEMY_OUTBOUND_EVENTS = {
 	"complained",
 	"failed",
 	"suppressed",
+	"diagnostic_received",
 	"reply",
 	"opt_out",
 }
