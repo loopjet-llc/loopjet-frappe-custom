@@ -694,6 +694,13 @@ def _require_internal_preview(lead, *, brand: str, path: str, tag: str, prompt_v
 	marker = next((comment for comment in comments if str(comment.content).startswith(INTERNAL_PREVIEW_PREFIX)), None)
 	fields = _marker_fields(marker.content) if marker else {}
 	approved_at = get_datetime(fields.get("internal_preview_approved_at")) if fields.get("internal_preview_approved_at") else None
+	# Frappe may deserialize Datetime fields as timezone-aware while ``now_datetime``
+	# is naive on some site configurations; compare on one normalized timeline.
+	if approved_at is not None and getattr(approved_at, "tzinfo", None) is not None:
+		approved_at = approved_at.replace(tzinfo=None)
+	preview_now = now_datetime()
+	if getattr(preview_now, "tzinfo", None) is not None:
+		preview_now = preview_now.replace(tzinfo=None)
 	if (
 		fields.get("internal_preview") != "true"
 		or fields.get("internal_preview_brand") != brand
@@ -702,8 +709,8 @@ def _require_internal_preview(lead, *, brand: str, path: str, tag: str, prompt_v
 		or not fields.get("internal_preview_approved_by")
 		or "automation" in fields.get("internal_preview_approved_by", "").lower()
 		or approved_at is None
-		or approved_at < add_days(now_datetime(), -1)
-		or approved_at > now_datetime()
+		or approved_at < add_days(preview_now, -1)
+		or approved_at > preview_now
 	):
 		frappe.throw(_("The internal preview approval marker is missing, stale, or invalid."), frappe.PermissionError)
 	if frappe.db.exists("AI SDR Activity", {"lead": lead.name, "prompt_version": prompt_version}):
