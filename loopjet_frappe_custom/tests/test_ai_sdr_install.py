@@ -211,7 +211,13 @@ def test_academy_manual_email_uses_the_protected_edge_sender_and_audits_provider
 	assert '"x-academy-outbound-secret": secret' in services
 	assert "activity.flags.ai_sdr_approval_action = True" in services
 	assert 'frappe.db.commit()' in services
-	assert 'frappe.sendmail' not in services[services.index("def send_academy_manual_email"):services.index("def send_approved_email")]
+	assert 'frappe.sendmail' not in services[
+		services.index("def send_academy_manual_email"):services.index("def send_academy_internal_preview")
+	]
+	assert "def send_academy_internal_preview" in services
+	assert "def send_loopjet_internal_preview" in services
+	assert '"internalPreview": internal_preview' in services
+	assert "LOOPJET_INTERNAL_PREVIEW_PROMPT" in services
 	assert "_update_academy_manual_activity" in agent_api
 	assert fields["provider_message_id"]["read_only"] == 1
 	assert fields["provider_outcome"]["read_only"] == 1

@@ -39,6 +39,7 @@ from loopjet_frappe_custom.ai_sdr.prompts import (
 	reply_messages,
 	research_messages,
 )
+from loopjet_frappe_custom.email_branding import render_loopjet_message, resolve_email_brand
 
 ACTIVE_STATUSES = ("Active", "Paused")
 REVIEW_TASK_CATEGORIES = {
@@ -50,6 +51,14 @@ REVIEW_TASK_CATEGORIES = {
 ACADEMY_TAG = "Learnlayer Academy"
 ACADEMY_MANUAL_MESSAGE_VERSION = "academy-manual-v1"
 ACADEMY_OUTBOUND_PATH = "/functions/v1/academy-outbound-email"
+INTERNAL_PREVIEW_PREFIX = "[Internal email preview |"
+INTERNAL_PREVIEW_RECIPIENT = "ahmad@el-ali.de"
+ACADEMY_INTERNAL_PREVIEW_TAG = "Academy Internal Preview"
+ACADEMY_INTERNAL_PREVIEW_PATH = "academy-manual-v1"
+ACADEMY_INTERNAL_PREVIEW_PROMPT = "academy-internal-preview-v1"
+LOOPJET_INTERNAL_PREVIEW_TAG = "Loopjet Internal Preview"
+LOOPJET_INTERNAL_PREVIEW_PATH = "loopjet-crm-manual-v1"
+LOOPJET_INTERNAL_PREVIEW_PROMPT = "loopjet-internal-preview-v1"
 
 
 def get_settings():
@@ -658,7 +667,78 @@ def _academy_manual_message_values(subject: str, body: str) -> tuple[str, str]:
 	return subject, body
 
 
-def send_academy_manual_email(lead_name: str, subject: str, body: str) -> dict[str, Any]:
+def _marker_fields(content: str) -> dict[str, str]:
+	fields = {}
+	for line in str(content or "").splitlines():
+		key, separator, value = line.partition(":")
+		if separator:
+			fields[key.strip()] = value.strip()
+	return fields
+
+
+def _require_internal_preview(lead, *, brand: str, path: str, tag: str, prompt_version: str) -> None:
+	tags = {value.strip() for value in str(lead.get("_user_tags") or "").split(",") if value.strip()}
+	if tag not in tags or str(lead.get("email") or "").strip().lower() != INTERNAL_PREVIEW_RECIPIENT:
+		frappe.throw(_("This is not an authorized internal preview record."), frappe.PermissionError)
+	comments = frappe.get_all(
+		"Comment",
+		filters={
+			"reference_doctype": "CRM Lead",
+			"reference_name": lead.name,
+			"comment_type": "Comment",
+		},
+		fields=["content", "creation"],
+		order_by="creation desc",
+		limit_page_length=100,
+	)
+	marker = next((comment for comment in comments if str(comment.content).startswith(INTERNAL_PREVIEW_PREFIX)), None)
+	fields = _marker_fields(marker.content) if marker else {}
+	approved_at = get_datetime(fields.get("internal_preview_approved_at")) if fields.get("internal_preview_approved_at") else None
+	if (
+		fields.get("internal_preview") != "true"
+		or fields.get("internal_preview_brand") != brand
+		or fields.get("internal_preview_path") != path
+		or fields.get("internal_preview_recipient", "").lower() != INTERNAL_PREVIEW_RECIPIENT
+		or not fields.get("internal_preview_approved_by")
+		or "automation" in fields.get("internal_preview_approved_by", "").lower()
+		or approved_at is None
+		or approved_at < add_days(now_datetime(), -1)
+		or approved_at > now_datetime()
+	):
+		frappe.throw(_("The internal preview approval marker is missing, stale, or invalid."), frappe.PermissionError)
+	if frappe.db.exists("AI SDR Activity", {"lead": lead.name, "prompt_version": prompt_version}):
+		frappe.throw(_("This internal preview path has already been consumed."))
+
+
+def _record_internal_preview_event(lead_name: str, *, brand: str, path: str, activity: str, outcome: str) -> None:
+	frappe.get_doc(
+		{
+			"doctype": "Comment",
+			"comment_type": "Comment",
+			"reference_doctype": "CRM Lead",
+			"reference_name": lead_name,
+			"content": "\n".join(
+				[
+					f"[Internal email preview result | {now()}]",
+					f"internal_preview_brand: {brand}",
+					f"internal_preview_path: {path}",
+					f"internal_preview_activity: {activity}",
+					f"internal_preview_outcome: {outcome}",
+					"internal_preview_recipient: ahmad@el-ali.de",
+					"internal_preview_prospect_email: false",
+				]
+			),
+		}
+	).insert(ignore_permissions=True)
+
+
+def send_academy_manual_email(
+	lead_name: str,
+	subject: str,
+	body: str,
+	*,
+	internal_preview: bool = False,
+) -> dict[str, Any]:
 	settings = get_settings()
 	if not settings.get("academy_manual_sending_enabled"):
 		frappe.throw(_("Manual Academy email sending is disabled in AI SDR Settings."))
@@ -667,6 +747,14 @@ def send_academy_manual_email(lead_name: str, subject: str, body: str) -> dict[s
 	tags = {tag.strip() for tag in str(lead.get("_user_tags") or "").split(",") if tag.strip()}
 	if ACADEMY_TAG not in tags:
 		frappe.throw(_("This CRM Lead is not in the LearnLayer Academy motion."), frappe.PermissionError)
+	if internal_preview:
+		_require_internal_preview(
+			lead,
+			brand="academy",
+			path=ACADEMY_INTERNAL_PREVIEW_PATH,
+			tag=ACADEMY_INTERNAL_PREVIEW_TAG,
+			prompt_version=ACADEMY_INTERNAL_PREVIEW_PROMPT,
+		)
 	organization = _resolve_organization(lead)
 	if lead.get("ai_sdr_do_not_contact") or is_suppressed(
 		email=lead.get("email"),
@@ -697,8 +785,12 @@ def send_academy_manual_email(lead_name: str, subject: str, body: str) -> dict[s
 			"body": body,
 			"approved_by": frappe.session.user,
 			"approved_at": now(),
-			"prompt_version": ACADEMY_MANUAL_MESSAGE_VERSION,
-			"idempotency_key": f"academy-manual:{lead.name}:{uuid.uuid4().hex}",
+			"prompt_version": ACADEMY_INTERNAL_PREVIEW_PROMPT if internal_preview else ACADEMY_MANUAL_MESSAGE_VERSION,
+			"idempotency_key": (
+				f"academy-internal-preview:{lead.name}"
+				if internal_preview
+				else f"academy-manual:{lead.name}:{uuid.uuid4().hex}"
+			),
 			"provider_outcome": "",
 			"last_error": "",
 		}
@@ -723,6 +815,7 @@ def send_academy_manual_email(lead_name: str, subject: str, body: str) -> dict[s
 				"subject": subject,
 				"body": body,
 				"author": frappe.session.user,
+				"internalPreview": internal_preview,
 			},
 			timeout=30,
 		)
@@ -770,6 +863,86 @@ def send_academy_manual_email(lead_name: str, subject: str, body: str) -> dict[s
 	}
 
 
+def send_academy_internal_preview(lead_name: str, subject: str, body: str) -> dict[str, Any]:
+	return send_academy_manual_email(lead_name, subject, body, internal_preview=True)
+
+
+def send_loopjet_internal_preview(lead_name: str, subject: str, body: str) -> dict[str, Any]:
+	settings = get_settings()
+	lead = frappe.get_doc("CRM Lead", lead_name)
+	_require_internal_preview(
+		lead,
+		brand="loopjet",
+		path=LOOPJET_INTERNAL_PREVIEW_PATH,
+		tag=LOOPJET_INTERNAL_PREVIEW_TAG,
+		prompt_version=LOOPJET_INTERNAL_PREVIEW_PROMPT,
+	)
+	organization = _resolve_organization(lead)
+	if lead.get("ai_sdr_do_not_contact") or is_suppressed(
+		email=lead.get("email"),
+		lead=lead.name,
+		organization=organization,
+	):
+		frappe.throw(_("Delivery blocked because the recipient is suppressed."))
+	subject, body = _academy_manual_message_values(subject, body)
+	sender_email = _email_sender(settings)
+	profile = resolve_email_brand(brand="loopjet", sender=sender_email)
+	message = render_loopjet_message(body=body, sender=profile.formatted_sender)
+	activity = frappe.get_doc(
+		{
+			"doctype": "AI SDR Activity",
+			"lead": lead.name,
+			"organization": organization,
+			"assigned_to": frappe.session.user,
+			"activity_type": "First Touch",
+			"channel": "Email",
+			"direction": "Outbound",
+			"status": "Approved",
+			"recipient_name": lead.get("lead_name") or INTERNAL_PREVIEW_RECIPIENT,
+			"recipient_email": INTERNAL_PREVIEW_RECIPIENT,
+			"subject": subject,
+			"body": body,
+			"approved_by": frappe.session.user,
+			"approved_at": now(),
+			"prompt_version": LOOPJET_INTERNAL_PREVIEW_PROMPT,
+			"idempotency_key": f"loopjet-internal-preview:{lead.name}",
+			"provider_outcome": "",
+			"last_error": "",
+		}
+	)
+	activity.flags.ai_sdr_approval_action = True
+	activity.insert(ignore_permissions=True)
+	frappe.db.commit()
+	try:
+		frappe.sendmail(
+			recipients=[INTERNAL_PREVIEW_RECIPIENT],
+			sender=profile.formatted_sender,
+			reply_to=profile.sender_email,
+			subject=subject,
+			message=message,
+			reference_doctype="CRM Lead",
+			reference_name=lead.name,
+			now=True,
+		)
+	except Exception as exc:
+		activity.db_set({"status": "Failed", "last_error": str(exc)[:1000]}, update_modified=True)
+		frappe.db.commit()
+		raise
+	activity.db_set(
+		{"status": "Sent", "provider_outcome": "SMTP accepted", "sent_at": now(), "last_error": ""},
+		update_modified=True,
+	)
+	_record_internal_preview_event(
+		lead.name,
+		brand="loopjet",
+		path=LOOPJET_INTERNAL_PREVIEW_PATH,
+		activity=activity.name,
+		outcome="smtp_accepted",
+	)
+	frappe.db.commit()
+	return {"name": activity.name, "status": "Sent", "sender": profile.formatted_sender, "reply_to": profile.sender_email}
+
+
 def send_approved_email(activity_name: str) -> str:
 	activity = frappe.get_doc("AI SDR Activity", activity_name)
 	settings = get_settings()
@@ -790,12 +963,16 @@ def send_approved_email(activity_name: str) -> str:
 	if _daily_email_count() >= int(settings.max_daily_emails or 0):
 		frappe.throw(_("The AI SDR daily email limit has been reached."))
 
+	sender_email = _email_sender(settings)
+	profile = resolve_email_brand(brand="loopjet", sender=sender_email)
+	message = render_loopjet_message(body=activity.body, sender=profile.formatted_sender)
 	try:
 		frappe.sendmail(
 			recipients=[activity.recipient_email],
-			sender=_email_sender(settings),
+			sender=profile.formatted_sender,
+			reply_to=profile.sender_email,
 			subject=activity.subject or "",
-			message=activity.body,
+			message=message,
 			reference_doctype="CRM Lead" if activity.lead else None,
 			reference_name=activity.lead,
 			now=True,
