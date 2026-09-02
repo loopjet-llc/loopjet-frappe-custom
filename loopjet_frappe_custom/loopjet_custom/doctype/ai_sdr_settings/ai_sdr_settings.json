@@ -11,6 +11,10 @@
   "sender_email_account",
   "max_daily_emails",
   "max_actions_per_run",
+  "academy_section",
+  "academy_manual_sending_enabled",
+  "academy_outbound_url",
+  "academy_outbound_secret",
   "ai_section",
   "ai_provider",
   "ai_base_url",
@@ -63,6 +67,30 @@
    "fieldname": "max_actions_per_run",
    "fieldtype": "Int",
    "label": "Maximum Actions Per Scheduler Run"
+  },
+  {
+   "fieldname": "academy_section",
+   "fieldtype": "Section Break",
+   "label": "LearnLayer Academy Email"
+  },
+  {
+   "default": "0",
+   "description": "Allows a manager to compose and explicitly send one Academy email from a tagged CRM Lead. Installation leaves this disabled.",
+   "fieldname": "academy_manual_sending_enabled",
+   "fieldtype": "Check",
+   "label": "Enable Manual Academy Email Sending"
+  },
+  {
+   "description": "Protected LearnLayer Academy outbound Edge endpoint. Must use HTTPS and the exact academy-outbound-email path.",
+   "fieldname": "academy_outbound_url",
+   "fieldtype": "Data",
+   "label": "Academy Outbound URL"
+  },
+  {
+   "description": "Shared secret used only for server-to-server Academy sends.",
+   "fieldname": "academy_outbound_secret",
+   "fieldtype": "Password",
+   "label": "Academy Outbound Secret"
   },
   {
    "fieldname": "ai_section",

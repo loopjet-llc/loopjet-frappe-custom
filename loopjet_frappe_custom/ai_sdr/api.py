@@ -13,6 +13,7 @@ from loopjet_frappe_custom.ai_sdr.services import (
 	enroll_lead,
 	get_settings,
 	mark_manual_activity_sent,
+	send_academy_manual_email,
 	send_approved_email,
 )
 from loopjet_frappe_custom.ai_sdr.services import (
@@ -150,6 +151,14 @@ def prepare_lead(lead: str, channel: str = "Email", instructions: str | None = N
 		frappe.throw(_("You do not have access to this CRM Lead."), frappe.PermissionError)
 	name = create_manual_activity(lead, channel, instructions)
 	return {"name": name, "status": "Draft"}
+
+
+@frappe.whitelist(methods=["POST"])
+def send_academy_email(lead: str, subject: str, body: str) -> dict:
+	require_sdr_access(manager=True)
+	if not frappe.has_permission("CRM Lead", "read", lead):
+		frappe.throw(_("You do not have access to this CRM Lead."), frappe.PermissionError)
+	return send_academy_manual_email(lead, subject, body)
 
 
 @frappe.whitelist()

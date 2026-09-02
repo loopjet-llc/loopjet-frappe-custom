@@ -68,6 +68,8 @@ def test_ai_sdr_doctype_manifests_are_present_and_safe_by_default() -> None:
 	fields = {field["fieldname"]: field for field in settings["fields"]}
 	assert fields["ai_enabled"]["default"] == "0"
 	assert fields["sending_enabled"]["default"] == "0"
+	assert fields["academy_manual_sending_enabled"]["default"] == "0"
+	assert fields["academy_outbound_secret"]["fieldtype"] == "Password"
 	assert fields["max_daily_emails"]["default"] == "25"
 	assert fields["ai_provider"]["default"] == "OpenRouter"
 	assert fields["ai_base_url"]["default"] == "https://openrouter.ai/api/v1"
@@ -141,12 +143,17 @@ def test_outbound_agent_api_is_bounded_and_post_protected() -> None:
 		"add_contact_person",
 		"add_call_note",
 		"get_next_call_list",
+		"get_academy_outbound_context",
+		"get_academy_outbound_limits",
+		"record_academy_outbound_event",
 	):
 		assert f"def {method}(" in agent_api
-	assert agent_api.count('@frappe.whitelist(methods=["POST"])') == 5
-	assert agent_api.count('@frappe.whitelist(methods=["GET"])') == 2
+	assert agent_api.count('@frappe.whitelist(methods=["POST"])') == 6
+	assert agent_api.count('@frappe.whitelist(methods=["GET"])') == 4
 	assert 'kwargs.pop("cmd", None)' in agent_api
 	assert "require_agent_api_access()" in agent_api
+	assert 'ACADEMY_TAG = "Learnlayer Academy"' in agent_api
+	assert "ACADEMY_OUTBOUND_EVENT_PREFIX" in agent_api
 	assert "frappe.sendmail" not in agent_api
 
 
@@ -180,6 +187,31 @@ def test_crm_lead_actions_support_drafts_and_manager_enrollment() -> None:
 	assert "get_access_context" in script
 	assert "Enroll in AI SDR Sequence" in script
 	assert "loopjet_frappe_custom.ai_sdr.api.enroll" in script
+	assert "Send LearnLayer Academy Email" in script
+	assert "Learnlayer Academy" in script
+	assert "window.confirm" in script
+	assert "loopjet_frappe_custom.ai_sdr.api.send_academy_email" in script
+
+
+def test_academy_manual_email_uses_the_protected_edge_sender_and_audits_provider_outcomes() -> None:
+	api = (PACKAGE / "ai_sdr" / "api.py").read_text()
+	services = (PACKAGE / "ai_sdr" / "services.py").read_text()
+	agent_api = (PACKAGE / "ai_sdr" / "agent_api.py").read_text()
+	activity_manifest = json.loads(
+		(PACKAGE / "loopjet_custom" / "doctype" / "ai_sdr_activity" / "ai_sdr_activity.json").read_text()
+	)
+	fields = {field["fieldname"]: field for field in activity_manifest["fields"]}
+
+	assert 'def send_academy_email(' in api
+	assert "require_sdr_access(manager=True)" in api
+	assert '"mode": "manual"' in services
+	assert '"x-academy-outbound-secret": secret' in services
+	assert 'frappe.db.commit()' in services
+	assert 'frappe.sendmail' not in services[services.index("def send_academy_manual_email"):services.index("def send_approved_email")]
+	assert "_update_academy_manual_activity" in agent_api
+	assert fields["provider_message_id"]["read_only"] == 1
+	assert fields["provider_outcome"]["read_only"] == 1
+	assert "Accepted" in fields["status"]["options"]
 
 
 def test_standard_crm_form_script_updates_without_a_document_save() -> None:

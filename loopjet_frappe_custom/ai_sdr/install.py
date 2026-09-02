@@ -352,11 +352,53 @@ def _lead_form_script() -> str:
 			onClick: () => window.open(`/app/ai-sdr?lead=${encodeURIComponent(this.doc.name)}`, "_blank")
 		})
 		if (access.can_manage) {
+			const tags = String(this.doc._user_tags || "").split(",").map((tag) => tag.trim())
+			if (tags.includes("Learnlayer Academy")) {
+				this.actions.push({
+					label: __("Send LearnLayer Academy Email"),
+					icon: "mail",
+					onClick: () => this.sendAcademyEmail()
+				})
+			}
 			this.actions.push({
 				label: __("Enroll in AI SDR Sequence"),
 				onClick: () => this.enrollInSequence()
 			})
 		}
+	}
+	async sendAcademyEmail() {
+		const values = await this.formDialog({
+			title: __("Send LearnLayer Academy Email"),
+			fields: [
+				{
+					fieldname: "subject",
+					fieldtype: "Small Text",
+					label: __("Subject"),
+					reqd: 1
+				},
+				{
+					fieldname: "body",
+					fieldtype: "Long Text",
+					label: __("Message Body"),
+					description: __("The verified LearnLayer visual form, Ahmad Alali signature and opt-out footer are added automatically."),
+					reqd: 1
+				}
+			],
+			required: ["subject", "body"],
+			submitLabel: __("Review and Send"),
+			cancelLabel: __("Cancel")
+		})
+		if (!values) return
+		if (!window.confirm(__("Send this email now through the approved LearnLayer Academy sender?"))) return
+		call(
+			"loopjet_frappe_custom.ai_sdr.api.send_academy_email",
+			{ lead: this.doc.name, subject: values.subject, body: values.body }
+		).then((result) => {
+			toast.success(__("Academy email accepted by the provider"))
+			window.open(`/app/ai-sdr?activity=${encodeURIComponent(result.name)}`, "_blank")
+		}).catch((error) => {
+			toast.error(error.messages?.[0] || __("Unable to send Academy email"))
+		})
 	}
 	async prepareOutreach() {
 		const values = await this.formDialog({

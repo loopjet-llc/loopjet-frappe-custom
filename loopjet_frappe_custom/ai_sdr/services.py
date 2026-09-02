@@ -6,6 +6,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 import frappe
+import requests
 from frappe import _
 from frappe.utils import add_days, get_datetime, getdate, now, now_datetime, nowdate
 
@@ -46,6 +47,9 @@ REVIEW_TASK_CATEGORIES = {
 	REPLY_REFERRAL,
 	REPLY_UNKNOWN,
 }
+ACADEMY_TAG = "Learnlayer Academy"
+ACADEMY_MANUAL_MESSAGE_VERSION = "academy-manual-v1"
+ACADEMY_OUTBOUND_PATH = "/functions/v1/academy-outbound-email"
 
 
 def get_settings():
@@ -621,6 +625,147 @@ def _daily_email_count() -> int:
 			"sent_at": [">=", f"{nowdate()} 00:00:00"],
 		},
 	)
+
+
+def _academy_outbound_configuration(settings) -> tuple[str, str]:
+	url = str(settings.get("academy_outbound_url") or "").strip()
+	secret = settings.get_password("academy_outbound_secret", raise_exception=False)
+	parsed = urlparse(url)
+	if (
+		parsed.scheme != "https"
+		or not parsed.hostname
+		or not parsed.hostname.endswith(".supabase.co")
+		or parsed.username
+		or parsed.password
+		or parsed.path != ACADEMY_OUTBOUND_PATH
+		or parsed.params
+		or parsed.query
+		or parsed.fragment
+	):
+		frappe.throw(_("Configure a valid HTTPS Academy outbound Edge endpoint."))
+	if not secret:
+		frappe.throw(_("Configure the Academy outbound shared secret."))
+	return url, secret
+
+
+def _academy_manual_message_values(subject: str, body: str) -> tuple[str, str]:
+	subject = str(subject or "").strip()
+	body = str(body or "").strip()
+	if len(subject) < 5 or len(subject) > 120 or "\n" in subject or "\r" in subject:
+		frappe.throw(_("Subject must be 5 to 120 characters on one line."))
+	if len(body) < 10 or len(body) > 5000:
+		frappe.throw(_("Message body must be 10 to 5,000 characters."))
+	return subject, body
+
+
+def send_academy_manual_email(lead_name: str, subject: str, body: str) -> dict[str, Any]:
+	settings = get_settings()
+	if not settings.get("academy_manual_sending_enabled"):
+		frappe.throw(_("Manual Academy email sending is disabled in AI SDR Settings."))
+	url, secret = _academy_outbound_configuration(settings)
+	lead = frappe.get_doc("CRM Lead", lead_name)
+	tags = {tag.strip() for tag in str(lead.get("_user_tags") or "").split(",") if tag.strip()}
+	if ACADEMY_TAG not in tags:
+		frappe.throw(_("This CRM Lead is not in the LearnLayer Academy motion."), frappe.PermissionError)
+	organization = _resolve_organization(lead)
+	if lead.get("ai_sdr_do_not_contact") or is_suppressed(
+		email=lead.get("email"),
+		lead=lead.name,
+		organization=organization,
+	):
+		frappe.throw(_("Delivery blocked because the recipient is suppressed."))
+	if not lead.get("email"):
+		frappe.throw(_("Recipient Email is required."))
+	subject, body = _academy_manual_message_values(subject, body)
+	if _daily_email_count() >= int(settings.max_daily_emails or 0):
+		frappe.throw(_("The AI SDR daily email limit has been reached."))
+
+	activity = frappe.get_doc(
+		{
+			"doctype": "AI SDR Activity",
+			"lead": lead.name,
+			"organization": organization,
+			"assigned_to": frappe.session.user,
+			"activity_type": "First Touch",
+			"channel": "Email",
+			"direction": "Outbound",
+			"status": "Approved",
+			"recipient_name": lead.get("lead_name")
+			or " ".join(filter(None, [lead.get("first_name"), lead.get("last_name")])),
+			"recipient_email": lead.get("email"),
+			"subject": subject,
+			"body": body,
+			"approved_by": frappe.session.user,
+			"approved_at": now(),
+			"prompt_version": ACADEMY_MANUAL_MESSAGE_VERSION,
+			"idempotency_key": f"academy-manual:{lead.name}:{uuid.uuid4().hex}",
+			"provider_outcome": "",
+			"last_error": "",
+		}
+	).insert(ignore_permissions=True)
+	# Persist the human-authored audit before the irreversible provider request.
+	frappe.db.commit()
+
+	try:
+		response = requests.post(
+			url,
+			headers={
+				"Content-Type": "application/json",
+				"x-academy-outbound-secret": secret,
+			},
+			json={
+				"lead": lead.name,
+				"mode": "manual",
+				"messageVersion": ACADEMY_MANUAL_MESSAGE_VERSION,
+				"activity": activity.name,
+				"subject": subject,
+				"body": body,
+				"author": frappe.session.user,
+			},
+			timeout=30,
+		)
+		result = response.json() if response.content else {}
+		if not response.ok:
+			detail = result.get("error") or ", ".join(result.get("reasons") or []) or "request_rejected"
+			raise frappe.ValidationError(f"Academy outbound rejected the request: {detail}")
+		provider_id = str(result.get("providerEmailId") or "").strip()
+		if result.get("providerAccepted") is not True or not provider_id:
+			raise frappe.ValidationError("Academy outbound did not confirm provider acceptance.")
+	except requests.RequestException as exc:
+		activity.db_set(
+			{
+				"status": "Failed",
+				"last_error": f"Provider outcome unknown after transport failure: {exc}"[:1000],
+			},
+			update_modified=True,
+		)
+		frappe.db.commit()
+		raise
+	except Exception as exc:
+		activity.db_set(
+			{"status": "Failed", "last_error": str(exc)[:1000]},
+			update_modified=True,
+		)
+		frappe.db.commit()
+		raise
+
+	activity.db_set(
+		{
+			"status": "Accepted",
+			"provider_message_id": provider_id,
+			"provider_outcome": "Accepted",
+			"sent_at": now(),
+			"last_error": "",
+		},
+		update_modified=True,
+	)
+	frappe.db.commit()
+	return {
+		"name": activity.name,
+		"status": "Accepted",
+		"provider_message_id": provider_id,
+		"provider_outcome": "Accepted",
+	}
 
 
 def send_approved_email(activity_name: str) -> str:

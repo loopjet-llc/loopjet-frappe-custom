@@ -7,6 +7,7 @@ These whitelisted methods are its deliberately bounded write surface.
 from __future__ import annotations
 
 import json
+from datetime import date
 from html import escape
 from typing import Any
 
@@ -39,6 +40,34 @@ CALL_STATUSES = {
 	"Rejected",
 }
 TERMINAL_CALL_STATUSES = {"Qualified", "Rejected"}
+ACADEMY_TAG = "Learnlayer Academy"
+ACADEMY_OUTBOUND_EVENT_PREFIX = "[Academy outbound |"
+ACADEMY_OUTBOUND_EVENTS = {
+	"reserved",
+	"blocked",
+	"provider_error",
+	"provider_accepted",
+	"sent",
+	"delivered",
+	"delivery_delayed",
+	"bounced",
+	"complained",
+	"failed",
+	"suppressed",
+	"reply",
+	"opt_out",
+}
+ACADEMY_SUPPRESSION_SCOPES = {"", "email", "global"}
+ACADEMY_PROVIDER_OUTCOMES = {
+	"provider_accepted": ("Accepted", "Accepted"),
+	"sent": ("Sent", "Sent"),
+	"delivered": ("Delivered", "Sent"),
+	"delivery_delayed": ("Delivery Delayed", "Accepted"),
+	"bounced": ("Bounced", "Failed"),
+	"complained": ("Complained", "Failed"),
+	"failed": ("Failed", "Failed"),
+	"suppressed": ("Suppressed", "Failed"),
+}
 
 
 def _clean(value: Any, *, maximum: int = 1000) -> str:
@@ -199,6 +228,103 @@ def _lead_payload(name: str) -> dict[str, Any]:
 		"next_call_at": doc.get("ai_sdr_next_call_at"),
 		"do_not_contact": bool(doc.get("ai_sdr_do_not_contact")),
 	}
+
+
+def _academy_tags(lead) -> set[str]:
+	return {tag.strip() for tag in _clean(lead.get("_user_tags"), maximum=2000).split(",") if tag.strip()}
+
+
+def _academy_lead(name: str):
+	name = _clean(name, maximum=140)
+	if not name or not frappe.db.exists("CRM Lead", name):
+		frappe.throw(_("Unknown CRM Lead."))
+	lead = frappe.get_doc("CRM Lead", name)
+	if ACADEMY_TAG not in _academy_tags(lead):
+		frappe.throw(_("The CRM Lead is not in the LearnLayer Academy motion."), frappe.PermissionError)
+	return lead
+
+
+def _academy_lead_payload(lead) -> dict[str, Any]:
+	return {
+		"name": lead.name,
+		"lead_name": lead.get("lead_name"),
+		"first_name": lead.get("first_name"),
+		"last_name": lead.get("last_name"),
+		"email": lead.get("email"),
+		"phone": lead.get("phone"),
+		"mobile_no": lead.get("mobile_no"),
+		"organization": _organization_name_for_lead(lead),
+		"website": lead.get("website"),
+		"job_title": lead.get("job_title"),
+		"status": lead.get("status"),
+		"_user_tags": lead.get("_user_tags"),
+		"ai_sdr_do_not_contact": bool(lead.get("ai_sdr_do_not_contact")),
+		"ai_sdr_call_status": lead.get("ai_sdr_call_status"),
+	}
+
+
+def _academy_event(note: str) -> str:
+	if not note.startswith(ACADEMY_OUTBOUND_EVENT_PREFIX):
+		frappe.throw(_("Academy outbound notes must start with the canonical event marker."))
+	for line in note.splitlines():
+		key, separator, value = line.partition(":")
+		if separator and key.strip().casefold() == "academy_outbound_event":
+			event = value.strip().casefold()
+			if event not in ACADEMY_OUTBOUND_EVENTS:
+				frappe.throw(_("Unsupported Academy outbound event."))
+			return event
+	frappe.throw(_("Academy outbound event is required."))
+
+
+def _academy_marker(note: str, fieldname: str) -> str:
+	for line in note.splitlines():
+		key, separator, value = line.partition(":")
+		if separator and key.strip().casefold() == fieldname.casefold():
+			return value.strip()
+	return ""
+
+
+def _update_academy_manual_activity(lead: str, note: str, event: str) -> None:
+	activity_name = _academy_marker(note, "academy_manual_activity")
+	if not activity_name:
+		return
+	if not activity_name.startswith("SDR-ACT-") or len(activity_name) > 40:
+		frappe.throw(_("Invalid Academy manual activity marker."))
+	if not frappe.db.exists("AI SDR Activity", activity_name):
+		frappe.throw(_("Unknown Academy manual activity."))
+	activity = frappe.get_doc("AI SDR Activity", activity_name)
+	if activity.lead != lead or activity.prompt_version != "academy-manual-v1":
+		frappe.throw(_("Academy manual activity does not match the CRM Lead."))
+
+	provider_id = _academy_marker(note, "resend_email_id")
+	if activity.provider_message_id and provider_id and activity.provider_message_id != provider_id:
+		frappe.throw(_("Academy provider message ID does not match the activity audit."))
+	values: dict[str, Any] = {}
+	if provider_id:
+		values["provider_message_id"] = provider_id[:140]
+	if event in ACADEMY_PROVIDER_OUTCOMES:
+		provider_outcome, status = ACADEMY_PROVIDER_OUTCOMES[event]
+		values.update({"provider_outcome": provider_outcome, "status": status})
+		if event == "provider_accepted" and not activity.sent_at:
+			values["sent_at"] = now()
+	if event in {"bounced", "complained", "failed", "suppressed"}:
+		values["last_error"] = (_academy_marker(note, "academy_provider_error") or event)[:1000]
+	elif event in {"provider_accepted", "sent", "delivered"}:
+		values["last_error"] = ""
+	if values:
+		activity.db_set(values, update_modified=True)
+
+
+def _academy_comment(lead: str, note: str):
+	return frappe.get_doc(
+		{
+			"doctype": "Comment",
+			"comment_type": "Comment",
+			"reference_doctype": "CRM Lead",
+			"reference_name": lead,
+			"content": note,
+		}
+	).insert(ignore_permissions=True)
 
 
 def _find_duplicate(
@@ -788,3 +914,138 @@ def get_next_call_list(
 			}
 		)
 	return {"as_of": cutoff, "count": len(call_list), "leads": call_list}
+
+
+@frappe.whitelist(methods=["GET"])
+def get_academy_outbound_context(lead: str) -> dict[str, Any]:
+	"""Return one Academy lead and its CRM audit comments to the sender."""
+	require_agent_api_access()
+	lead_doc = _academy_lead(lead)
+	comments = frappe.get_all(
+		"Comment",
+		filters={
+			"reference_doctype": "CRM Lead",
+			"reference_name": lead_doc.name,
+			"comment_type": "Comment",
+		},
+		fields=["name", "reference_name", "creation", "content"],
+		order_by="creation asc",
+		limit_page_length=500,
+	)
+	return {
+		"lead": _academy_lead_payload(lead_doc),
+		"comments": [dict(comment) for comment in comments],
+	}
+
+
+@frappe.whitelist(methods=["GET"])
+def get_academy_outbound_limits(
+	organization_key: str,
+	business_date: str,
+) -> dict[str, Any]:
+	"""Return only the Academy audit rows needed for sender rate limits."""
+	require_agent_api_access()
+	organization_key = normalize_company_domain(organization_key)
+	if not organization_key:
+		frappe.throw(_("A valid organization_key domain is required."))
+	business_date = _clean(business_date, maximum=10)
+	try:
+		parsed_business_date = date.fromisoformat(business_date)
+	except ValueError:
+		frappe.throw(_("business_date must use YYYY-MM-DD."))
+	if parsed_business_date.isoformat() != business_date:
+		frappe.throw(_("business_date must use YYYY-MM-DD."))
+
+	base_filters = {
+		"reference_doctype": "CRM Lead",
+		"comment_type": "Comment",
+	}
+	fields = ["name", "reference_name", "creation", "content"]
+	organization_comments = frappe.get_all(
+		"Comment",
+		filters={
+			**base_filters,
+			"content": ["like", f"%academy_organization_key: {organization_key}%"],
+		},
+		fields=fields,
+		order_by="creation asc",
+		limit_page_length=500,
+	)
+	daily_comments = frappe.get_all(
+		"Comment",
+		filters={
+			**base_filters,
+			"content": ["like", f"%academy_business_date: {business_date}%"],
+		},
+		fields=fields,
+		order_by="creation asc",
+		limit_page_length=500,
+	)
+	return {
+		"organization_key": organization_key,
+		"business_date": business_date,
+		"organization_comments": [dict(comment) for comment in organization_comments],
+		"daily_comments": [dict(comment) for comment in daily_comments],
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def record_academy_outbound_event(
+	lead: str,
+	note: str,
+	suppression_scope: str | None = None,
+) -> dict[str, Any]:
+	"""Append a canonical sender event and apply only its bounded suppression."""
+	require_agent_api_access()
+	lead_doc = _academy_lead(lead)
+	note = _clean(note, maximum=10000)
+	event = _academy_event(note)
+	suppression_scope = _clean(suppression_scope, maximum=20).casefold()
+	if suppression_scope not in ACADEMY_SUPPRESSION_SCOPES:
+		frappe.throw(_("Unsupported Academy suppression scope."))
+	if suppression_scope == "email" and event not in {"bounced", "failed", "suppressed"}:
+		frappe.throw(_("Email suppression requires a provider stop event."))
+	if suppression_scope == "global" and event not in {"complained", "opt_out"}:
+		frappe.throw(_("Global suppression requires a complaint or explicit opt-out."))
+
+	if suppression_scope == "email":
+		lead_doc.add_tag("Academy Email Suppression")
+		lead_doc.reload()
+	elif suppression_scope == "global":
+		lead_doc.add_tag("Academy Suppressed")
+		lead_values = _supported_values(
+			"CRM Lead",
+			{
+				"ai_sdr_do_not_contact": 1,
+				"ai_sdr_call_status": "Rejected",
+				"ai_sdr_state": "Stopped",
+			},
+		)
+		if frappe.db.exists("CRM Lead Status", "Unqualified"):
+			lead_values["status"] = "Unqualified"
+		lead_doc.update(lead_values)
+		lead_doc.save(ignore_permissions=True)
+		lead_doc.reload()
+	elif event == "reply":
+		lead_values = _supported_values(
+			"CRM Lead",
+			{
+				"ai_sdr_call_status": "Follow-up",
+				"ai_sdr_state": "Contacting",
+				"ai_sdr_last_contacted_at": now(),
+			},
+		)
+		if frappe.db.exists("CRM Lead Status", "Contacted"):
+			lead_values["status"] = "Contacted"
+		lead_doc.update(lead_values)
+		lead_doc.save(ignore_permissions=True)
+		lead_doc.reload()
+
+	comment = _academy_comment(lead_doc.name, note)
+	_update_academy_manual_activity(lead_doc.name, note, event)
+	return {
+		"created": True,
+		"event": event,
+		"comment": comment.name,
+		"lead": _academy_lead_payload(lead_doc),
+	}

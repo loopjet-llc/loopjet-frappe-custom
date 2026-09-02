@@ -44,9 +44,40 @@ The shared path prefix is:
 | `add_contact_person` | `POST` | Replace a company placeholder or add another person under the organization |
 | `add_call_note` | `POST` | Add a timeline note, update call state, and optionally create a follow-up task |
 | `get_next_call_list` | `GET` | Return due, non-suppressed prospects ordered by next call time |
+| `get_academy_outbound_context` | `GET` | Return one tagged Academy lead and its CRM comments for gate evaluation |
+| `get_academy_outbound_limits` | `GET` | Return bounded organization-window and business-day Academy audit rows for rate-limit checks |
+| `record_academy_outbound_event` | `POST` | Append a canonical Academy sender event and optionally apply bounded suppression |
 
 Every write method rejects `GET`. The API never sends an email or LinkedIn
 message. LinkedIn research and sending remain human-approved manual actions.
+
+The Academy sender methods do not grant generic CRM permissions. They refuse
+leads without the exact `Learnlayer Academy` tag, accept only canonical
+`[Academy outbound |` events, and restrict suppression to provider stop events
+or explicit complaints/opt-outs. The email provider call remains in the
+LearnLayer-owned sender, not this CRM integration.
+
+## Manual Academy email from a CRM Lead
+
+The standard CRM Lead form script exposes **Send LearnLayer Academy Email** only
+to managers and only on a lead with the exact `Learnlayer Academy` tag. The
+dialog accepts a subject and plain-text body, then requires a second explicit
+send confirmation. Frappe calls the protected LearnLayer Edge sender
+server-to-server; the shared secret and Resend key never reach the browser.
+
+This path is disabled by default. A System Manager must configure
+`academy_outbound_url`, the Password field `academy_outbound_secret`, and then
+enable `academy_manual_sending_enabled`. The URL validator requires HTTPS, a
+Supabase host, and the exact `/functions/v1/academy-outbound-email` path.
+
+Before the external request, Frappe persists an `AI SDR Activity` containing
+the author, lead, recipient, subject, body, approval time, idempotency key, and
+`academy-manual-v1` version. The sender independently re-reads the CRM gate and
+suppression state and applies the same dedupe, organization-window, reservation,
+and daily-limit controls as automation. Provider ID, outcome, acceptance time,
+and errors are written back to the activity; signed webhook events continue to
+update that same audit record. A transport failure is recorded as outcome
+unknown and must not be worked around by creating a second message.
 
 ## Create a researched company
 
