@@ -702,7 +702,9 @@ def send_academy_manual_email(lead_name: str, subject: str, body: str) -> dict[s
 			"provider_outcome": "",
 			"last_error": "",
 		}
-	).insert(ignore_permissions=True)
+	)
+	activity.flags.ai_sdr_approval_action = True
+	activity.insert(ignore_permissions=True)
 	# Persist the human-authored audit before the irreversible provider request.
 	frappe.db.commit()
 

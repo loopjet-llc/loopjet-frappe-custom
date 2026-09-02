@@ -207,6 +207,7 @@ def test_academy_manual_email_uses_the_protected_edge_sender_and_audits_provider
 	assert "require_sdr_access(manager=True)" in api
 	assert '"mode": "manual"' in services
 	assert '"x-academy-outbound-secret": secret' in services
+	assert "activity.flags.ai_sdr_approval_action = True" in services
 	assert 'frappe.db.commit()' in services
 	assert 'frappe.sendmail' not in services[services.index("def send_academy_manual_email"):services.index("def send_approved_email")]
 	assert "_update_academy_manual_activity" in agent_api
