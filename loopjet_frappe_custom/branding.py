@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import frappe
 
+from loopjet_frappe_custom.invoice_print import INVOICE_CSS, INVOICE_HTML
+
 PRINT_FORMAT_NAME_BY_DOCTYPE = {
 	"Sales Invoice": "Loopjet Invoice",
 	"Quotation": "Loopjet Offer",
@@ -767,8 +769,8 @@ def install_print_formats() -> None:
 		doc.disabled = 0
 		doc.pdf_generator = "chrome"
 		doc.print_format_type = "Jinja"
-		doc.html = PRINT_HTML
-		doc.css = PRINT_CSS
+		doc.html = INVOICE_HTML if doctype == "Sales Invoice" else PRINT_HTML
+		doc.css = INVOICE_CSS if doctype == "Sales Invoice" else PRINT_CSS
 		doc.margin_top = 0
 		doc.margin_bottom = 0
 		doc.margin_left = 0
