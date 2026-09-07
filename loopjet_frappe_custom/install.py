@@ -9,7 +9,10 @@ from loopjet_frappe_custom.branding import install_branding
 from loopjet_frappe_custom.founder_cockpit.install import install_founder_cockpit
 from loopjet_frappe_custom.inbound_email import required_file_size_limit
 from loopjet_frappe_custom.portal import install_ticket_portal
-from loopjet_frappe_custom.workspace import install_raven_home_shortcut
+from loopjet_frappe_custom.workspace import (
+	install_customer_reports_home_shortcut,
+	install_raven_home_shortcut,
+)
 
 SUPPORTED_FRAPPE_MAJOR = 16
 
@@ -26,6 +29,7 @@ def after_install() -> None:
 	install_branding()
 	install_ticket_portal()
 	install_raven_home_shortcut()
+	install_customer_reports_home_shortcut()
 	install_ai_sdr()
 	install_founder_cockpit()
 	frappe.clear_cache()
@@ -37,6 +41,7 @@ def after_migrate() -> None:
 	install_branding()
 	install_ticket_portal()
 	install_raven_home_shortcut()
+	install_customer_reports_home_shortcut()
 	install_ai_sdr()
 	install_founder_cockpit()
 	frappe.clear_cache()

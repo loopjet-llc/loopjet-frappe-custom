@@ -12,6 +12,14 @@ required_apps = []
 after_install = "loopjet_frappe_custom.install.after_install"
 after_migrate = "loopjet_frappe_custom.install.after_migrate"
 
+doctype_js = {
+	"Customer": "public/js/customer.js",
+}
+
+after_file_upload = [
+	"loopjet_frappe_custom.customer_reports.make_customer_report_file_private",
+]
+
 get_website_user_home_page = "loopjet_frappe_custom.portal.get_website_user_home_page"
 
 website_redirects = [
