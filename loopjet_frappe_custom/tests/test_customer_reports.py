@@ -63,7 +63,16 @@ def test_customer_and_report_forms_expose_upload_list_and_download_actions() -> 
 	assert '__("Kundenberichte öffnen")' in customer_js
 	assert "Loopjet Customer Report" in customer_js
 	assert '__("PDF herunterladen")' in report_js
-	assert "frappe.utils.file_manager.download_file" in report_js
+	assert "loopjet_frappe_custom.customer_reports.download_customer_report" in report_js
 	assert "encodeURIComponent" in report_js
 	assert "after_file_upload" in hooks
 	assert "make_customer_report_file_private" in hooks
+
+
+def test_customer_report_download_uses_the_private_file_bytes() -> None:
+	source = (ROOT / "customer_reports.py").read_text()
+
+	assert "def download_customer_report" in source
+	assert 'report.check_permission("read")' in source
+	assert "file_path.read_bytes()" in source
+	assert 'frappe.local.response.type = "download"' in source
