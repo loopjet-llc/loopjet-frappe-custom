@@ -17,6 +17,11 @@ INVOICE_HTML = """
 {% set service_period_end = doc.get_formatted("service_period_end") if doc.service_period_end else "" %}
 {% set service_period_value = service_period_start ~ " - " ~ service_period_end if service_period_start and service_period_end else "" %}
 {% set tax_note = "Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge). Die Umsatzsteuer wird vom Leistungsempfänger geschuldet." if is_german else "Reverse charge applies. VAT is to be accounted for by the recipient." %}
+{% set default_bank_account = frappe.db.get_value("Bank Account", {"company": doc.company, "is_company_account": 1, "is_default": 1, "disabled": 0}, "name") if not is_offer else "" %}
+{% set bank_account_name = frappe.db.get_value("Bank Account", default_bank_account, "account_name") if default_bank_account else "" %}
+{% set bank_name = frappe.db.get_value("Bank Account", default_bank_account, "bank") if default_bank_account else "" %}
+{% set bank_iban = frappe.db.get_value("Bank Account", default_bank_account, "iban") if default_bank_account else "" %}
+{% set bank_bic = frappe.db.get_value("Bank Account", default_bank_account, "branch_code") if default_bank_account else "" %}
 <div class="lj-doc">
 	<div class="lj-sheet">
 		<div class="lj-hero">
@@ -166,6 +171,25 @@ INVOICE_HTML = """
 				</div>
 			{% endif %}
 
+			{% if not is_offer and bank_iban %}
+				<div class="lj-payment">
+					<div class="lj-label">{{ "Zahlungsdaten" if is_german else "Payment details" }}</div>
+					<div class="lj-payment-row">
+						<div class="lj-payment-key">{{ "Kontoinhaber" if is_german else "Account holder" }}</div>
+						<div class="lj-payment-value">{{ company_name }}</div>
+						<div class="lj-payment-key">{{ "Bank" if is_german else "Bank" }}</div>
+						<div class="lj-payment-value">{{ bank_name or bank_account_name }}</div>
+					</div>
+					<div class="lj-payment-row">
+						<div class="lj-payment-key">IBAN</div>
+						<div class="lj-payment-value">{{ bank_iban }}</div>
+						<div class="lj-payment-key">{{ "BIC" if is_german else "SWIFT / BIC" }}</div>
+						<div class="lj-payment-value">{{ bank_bic }}</div>
+					</div>
+					<div class="lj-payment-note">{{ "Bitte die Rechnungsnummer als Verwendungszweck angeben." if is_german else "Please use the invoice number as the payment reference." }}</div>
+				</div>
+			{% endif %}
+
 			<div class="lj-footer">
 				<div class="lj-footer-left">
 					<strong>{{ company_name }}</strong><br>
@@ -240,11 +264,18 @@ INVOICE_CSS = """
 .lj-tax-note, .lj-notes { color: #52525b; font-size: 10px; line-height: 1.6; margin-top: 22px; }
 .lj-tax-note .lj-label, .lj-notes .lj-label { margin-bottom: 6px; }
 .lj-notes p { margin: 0 0 6px; }
+.lj-payment { margin-top: 22px; padding: 13px 15px; border: 1px solid #dedee3; background: #fafafa !important; break-inside: avoid; page-break-inside: avoid; }
+.lj-payment .lj-label { margin-bottom: 7px; }
+.lj-payment-row { display: table; width: 100%; table-layout: fixed; font-size: 10px; line-height: 1.45; }
+.lj-payment-key, .lj-payment-value { display: table-cell; padding: 2px 6px 2px 0; vertical-align: top; }
+.lj-payment-key { width: 17%; color: #66666e; }
+.lj-payment-value { width: 33%; color: #09090b; font-weight: 600; overflow-wrap: anywhere; }
+.lj-payment-note { margin-top: 6px; color: #626268; font-size: 9px; }
 .lj-footer { margin-top: 35px; padding-top: 16px; border-top: 1px solid #dedee3; font-size: 9px; line-height: 1.65; color: #71717a; }
 .lj-footer strong { color: #09090b; font-weight: 600; }
 .lj-footer-left { width: 55%; padding-right: 20px; }
 .lj-footer-right { text-align: right; }
-.lj-hero, .lj-grid, .lj-items tr, .lj-totals, .lj-tax-note, .lj-footer { break-inside: avoid; page-break-inside: avoid; }
+.lj-hero, .lj-grid, .lj-items tr, .lj-totals, .lj-tax-note, .lj-payment, .lj-footer { break-inside: avoid; page-break-inside: avoid; }
 .lj-notes h1, .lj-notes h2, .lj-notes h3, .lj-label { break-after: avoid; page-break-after: avoid; }
 
 """
