@@ -1,0 +1,36 @@
+{
+ "app": "loopjet_frappe_custom",
+ "charts": [],
+ "content": "[]",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "command",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Founder Operations",
+ "links": [],
+ "link_to": "founder-cockpit",
+ "link_type": "Page",
+ "module": "Loopjet Custom",
+ "name": "Founder Operations",
+ "number_cards": [],
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "restrict_to_domain": "",
+ "roles": [
+  {
+   "role": "Founder Cockpit User"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 0.0,
+ "shortcuts": [],
+ "title": "Founder Operations",
+ "type": "Link"
+}

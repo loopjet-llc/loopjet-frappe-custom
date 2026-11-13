@@ -1,0 +1,82 @@
+[
+  {
+    "domain": "Sales",
+    "exception_type": "Priority lead",
+    "condition": "priority-lead",
+    "source_doctype": "CRM Lead",
+    "source_name": "CRM-LEAD-DEMO-1",
+    "title": "Representative Academy lead",
+    "reason": "High-priority CRM lead is still active.",
+    "recommended_action": "Confirm the next concrete call.",
+    "base_score": 76,
+    "due_at": "2026-09-02",
+    "occurred_at": "2026-08-26"
+  },
+  {
+    "domain": "Sales",
+    "exception_type": "Deal needs action",
+    "condition": "missing-next-step",
+    "source_doctype": "CRM Lead",
+    "source_name": "CRM-LEAD-DEMO-1",
+    "title": "Representative Academy lead",
+    "reason": "No next step is recorded.",
+    "recommended_action": "Set the next accountable step.",
+    "base_score": 80,
+    "needs_decision": true,
+    "occurred_at": "2026-08-26"
+  },
+  {
+    "domain": "Finance",
+    "exception_type": "Overdue receivable",
+    "condition": "receivable-overdue",
+    "source_doctype": "Sales Invoice",
+    "source_name": "ACC-SINV-DEMO-1",
+    "title": "Representative client invoice",
+    "reason": "Submitted invoice is overdue.",
+    "recommended_action": "Choose an appropriate collection step.",
+    "base_score": 85,
+    "company": "Loopjet LLC",
+    "needs_decision": true,
+    "due_at": "2026-08-28",
+    "occurred_at": "2026-08-01"
+  },
+  {
+    "domain": "Clients",
+    "exception_type": "Escalated helpdesk ticket",
+    "condition": "helpdesk:High",
+    "source_doctype": "HD Ticket",
+    "source_name": "HD-TICKET-DEMO-1",
+    "title": "Representative ticket",
+    "reason": "Resolution deadline is due.",
+    "recommended_action": "Confirm ownership and the next customer-safe action.",
+    "base_score": 74,
+    "company": "Loopjet Malaysia Sdn. Bhd.",
+    "due_at": "2026-09-02",
+    "occurred_at": "2026-08-31"
+  },
+  {
+    "domain": "Operations",
+    "exception_type": "Repeated application error",
+    "condition": "raven-token-sync",
+    "source_doctype": "Error Log",
+    "source_name": "ERROR-DEMO-1",
+    "title": "Representative integration error",
+    "reason": "The same error repeated within the configured window.",
+    "recommended_action": "Inspect the restricted source log.",
+    "base_score": 94,
+    "occurred_at": "2026-09-02"
+  },
+  {
+    "domain": "Team",
+    "exception_type": "Assigned follow-up",
+    "condition": "team-follow-up",
+    "source_doctype": "Task",
+    "source_name": "TASK-DEMO-1",
+    "title": "Representative development task",
+    "reason": "A high-priority assignment is open.",
+    "recommended_action": "Review the task and record the next owner.",
+    "base_score": 72,
+    "due_at": "2026-09-08",
+    "occurred_at": "2026-09-01"
+  }
+]
