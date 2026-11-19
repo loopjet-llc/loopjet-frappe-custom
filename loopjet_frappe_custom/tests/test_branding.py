@@ -6,7 +6,7 @@ from loopjet_frappe_custom.invoice_print import INVOICE_CSS, INVOICE_HTML
 def test_invoice_template_uses_the_default_company_bank_account() -> None:
 	branding_source = Path(__file__).resolve().parents[1].joinpath("branding.py").read_text()
 
-	assert 'doc.html = INVOICE_HTML if doctype == "Sales Invoice" else PRINT_HTML' in branding_source
+	assert "doc.html, doc.css = INVOICE_HTML, INVOICE_CSS" in branding_source
 	assert '"is_company_account": 1, "is_default": 1, "disabled": 0' in INVOICE_HTML
 	assert '{% if not is_offer and bank_iban %}' in INVOICE_HTML
 	assert "{{ bank_iban }}" in INVOICE_HTML

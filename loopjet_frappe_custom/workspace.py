@@ -13,6 +13,11 @@ CUSTOMER_REPORTS_SHORTCUT_URL = "/app/loopjet-customer-report"
 CUSTOMER_REPORTS_SHORTCUT_BLOCK_ID = "loopjet-customer-reports"
 CUSTOMER_REPORTS_SIDEBAR_ICON = "file-text"
 
+ACTIVITY_REPORTS_SHORTCUT_LABEL = "Tätigkeitsberichte"
+ACTIVITY_REPORTS_SHORTCUT_URL = "/app/loopjet-activity-report"
+ACTIVITY_REPORTS_SHORTCUT_BLOCK_ID = "loopjet-activity-reports"
+ACTIVITY_REPORTS_SIDEBAR_ICON = "clock"
+
 
 def raven_sidebar_item_values() -> dict[str, Any]:
 	return {
@@ -303,4 +308,127 @@ def install_customer_reports_home_sidebar_link() -> bool:
 				frappe.flags.in_import = previous_in_import
 			changed = True
 
+	return changed
+
+
+def activity_reports_sidebar_item_values() -> dict[str, Any]:
+	return {
+		"label": ACTIVITY_REPORTS_SHORTCUT_LABEL,
+		"type": "Link",
+		"link_type": "URL",
+		"link_to": "",
+		"url": ACTIVITY_REPORTS_SHORTCUT_URL,
+		"icon": ACTIVITY_REPORTS_SIDEBAR_ICON,
+	}
+
+
+def add_activity_reports_shortcut_to_layout(content: str) -> tuple[str, bool]:
+	layout: list[dict[str, Any]] = json.loads(content or "[]")
+	if any(
+		block.get("type") == "shortcut"
+		and block.get("data", {}).get("shortcut_name") == ACTIVITY_REPORTS_SHORTCUT_LABEL
+		for block in layout
+	):
+		return content, False
+
+	block = {
+		"id": ACTIVITY_REPORTS_SHORTCUT_BLOCK_ID,
+		"type": "shortcut",
+		"data": {"shortcut_name": ACTIVITY_REPORTS_SHORTCUT_LABEL, "col": 3},
+	}
+	insert_at = next(
+		(
+			index + 1
+			for index, item in enumerate(layout)
+			if item.get("type") == "shortcut"
+			and item.get("data", {}).get("shortcut_name") == CUSTOMER_REPORTS_SHORTCUT_LABEL
+		),
+		len(layout),
+	)
+	layout.insert(insert_at, block)
+	return json.dumps(layout, separators=(",", ":")), True
+
+
+def install_activity_reports_home_shortcut() -> bool:
+	"""Expose structured activity reports in the ERPNext Home workspace and sidebar."""
+	import frappe
+
+	if not frappe.db.exists("DocType", "Loopjet Activity Report"):
+		return False
+
+	changed = False
+	if frappe.db.exists("Workspace", "Home"):
+		workspace = frappe.get_doc("Workspace", "Home")
+		shortcut = next(
+			(row for row in workspace.shortcuts if row.label == ACTIVITY_REPORTS_SHORTCUT_LABEL),
+			None,
+		)
+		values = {
+			"type": "URL",
+			"url": ACTIVITY_REPORTS_SHORTCUT_URL,
+			"link_to": "",
+			"label": ACTIVITY_REPORTS_SHORTCUT_LABEL,
+			"icon": ACTIVITY_REPORTS_SIDEBAR_ICON,
+			"color": "#00009D",
+		}
+		workspace_changed = False
+		if shortcut is None:
+			workspace.append("shortcuts", values)
+			workspace_changed = True
+		else:
+			for fieldname, value in values.items():
+				if shortcut.get(fieldname) != value:
+					shortcut.set(fieldname, value)
+					workspace_changed = True
+
+		workspace.content, layout_changed = add_activity_reports_shortcut_to_layout(workspace.content)
+		workspace_changed = workspace_changed or layout_changed
+		if workspace_changed:
+			workspace.flags.ignore_permissions = True
+			workspace.save()
+			changed = True
+
+	changed = install_activity_reports_home_sidebar_link() or changed
+	if changed:
+		frappe.clear_cache()
+	return changed
+
+
+def install_activity_reports_home_sidebar_link() -> bool:
+	import frappe
+
+	if not frappe.db.exists("Workspace Sidebar", "Home"):
+		return False
+
+	sidebar_names = ["Home"]
+	sidebar_names.extend(
+		frappe.get_all("Workspace Sidebar", filters={"title": ["like", "Home-%"]}, pluck="name")
+	)
+	changed = False
+	for sidebar_name in dict.fromkeys(sidebar_names):
+		sidebar = frappe.get_doc("Workspace Sidebar", sidebar_name)
+		item = next(
+			(
+				row for row in sidebar.items
+				if row.label == ACTIVITY_REPORTS_SHORTCUT_LABEL
+				or (row.link_type == "URL" and row.url == ACTIVITY_REPORTS_SHORTCUT_URL)
+			),
+			None,
+		)
+		values = activity_reports_sidebar_item_values()
+		if item is None:
+			sidebar.append("items", values)
+		else:
+			values = {key: value for key, value in values.items() if item.get(key) != value}
+			for fieldname, value in values.items():
+				item.set(fieldname, value)
+		if values:
+			sidebar.flags.ignore_permissions = True
+			previous_in_import = frappe.flags.in_import
+			try:
+				frappe.flags.in_import = True
+				sidebar.save()
+			finally:
+				frappe.flags.in_import = previous_in_import
+			changed = True
 	return changed

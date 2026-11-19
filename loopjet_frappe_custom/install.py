@@ -10,6 +10,7 @@ from loopjet_frappe_custom.founder_cockpit.install import install_founder_cockpi
 from loopjet_frappe_custom.inbound_email import required_file_size_limit
 from loopjet_frappe_custom.portal import install_ticket_portal
 from loopjet_frappe_custom.workspace import (
+	install_activity_reports_home_shortcut,
 	install_customer_reports_home_shortcut,
 	install_raven_home_shortcut,
 )
@@ -30,6 +31,7 @@ def after_install() -> None:
 	install_ticket_portal()
 	install_raven_home_shortcut()
 	install_customer_reports_home_shortcut()
+	install_activity_reports_home_shortcut()
 	install_ai_sdr()
 	install_founder_cockpit()
 	frappe.clear_cache()
@@ -42,6 +44,7 @@ def after_migrate() -> None:
 	install_ticket_portal()
 	install_raven_home_shortcut()
 	install_customer_reports_home_shortcut()
+	install_activity_reports_home_shortcut()
 	install_ai_sdr()
 	install_founder_cockpit()
 	frappe.clear_cache()

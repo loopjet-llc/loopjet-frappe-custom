@@ -24,6 +24,7 @@ def test_frappe_metadata_exists() -> None:
 	assert "loopjet_frappe_custom.patches.v0_3.install_outbound_agent_api" in patches
 	assert "loopjet_frappe_custom.patches.v0_4.install_founder_cockpit" in patches
 	assert "loopjet_frappe_custom.patches.v0_5.install_customer_reports" in patches
+	assert "loopjet_frappe_custom.patches.v0_6.install_activity_reports" in patches
 	hooks = (package / "hooks.py").read_text()
 	assert "get_website_user_home_page" in hooks
 	assert '"/issues", "target": "/helpdesk/my-tickets"' in hooks

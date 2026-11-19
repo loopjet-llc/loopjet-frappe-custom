@@ -14,6 +14,7 @@ after_migrate = "loopjet_frappe_custom.install.after_migrate"
 
 doctype_js = {
 	"Customer": "public/js/customer.js",
+	"Sales Invoice": "public/js/sales_invoice.js",
 }
 
 after_file_upload = [
