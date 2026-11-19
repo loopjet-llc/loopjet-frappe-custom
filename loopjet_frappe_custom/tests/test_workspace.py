@@ -1,10 +1,14 @@
 import json
 
 from loopjet_frappe_custom.workspace import (
+	ACTIVITY_REPORTS_SHORTCUT_BLOCK_ID,
+	ACTIVITY_REPORTS_SHORTCUT_LABEL,
 	CUSTOMER_REPORTS_SHORTCUT_BLOCK_ID,
 	CUSTOMER_REPORTS_SHORTCUT_LABEL,
 	RAVEN_SHORTCUT_BLOCK_ID,
 	RAVEN_SHORTCUT_LABEL,
+	activity_reports_sidebar_item_values,
+	add_activity_reports_shortcut_to_layout,
 	add_customer_reports_shortcut_to_layout,
 	add_raven_shortcut_to_layout,
 	customer_reports_sidebar_item_values,
@@ -99,3 +103,16 @@ def test_customer_reports_sidebar_item_repair_is_idempotent() -> None:
 	assert reconcile_customer_reports_sidebar_item(item) is True
 	assert item == customer_reports_sidebar_item_values()
 	assert reconcile_customer_reports_sidebar_item(item) is False
+
+
+def test_activity_reports_shortcut_follows_customer_reports_once() -> None:
+	content = json.dumps(
+		[{"id": "customer", "type": "shortcut", "data": {"shortcut_name": CUSTOMER_REPORTS_SHORTCUT_LABEL}}]
+	)
+	updated, changed = add_activity_reports_shortcut_to_layout(content)
+	layout = json.loads(updated)
+	assert changed is True
+	assert layout[1]["id"] == ACTIVITY_REPORTS_SHORTCUT_BLOCK_ID
+	assert layout[1]["data"]["shortcut_name"] == ACTIVITY_REPORTS_SHORTCUT_LABEL
+	assert add_activity_reports_shortcut_to_layout(updated) == (updated, False)
+	assert activity_reports_sidebar_item_values()["url"] == "/app/loopjet-activity-report"

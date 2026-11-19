@@ -22,3 +22,6 @@ def test_reinstall_preserves_light_invoice_and_original_offer(monkeypatch):
 		assert documents["Loopjet Invoice"].css == branding.INVOICE_CSS
 		assert documents["Loopjet Offer"].html == branding.PRINT_HTML
 		assert documents["Loopjet Offer"].css == branding.PRINT_CSS
+		assert documents["Loopjet Tätigkeitsbericht"].html == branding.ACTIVITY_REPORT_HTML
+		assert documents["Loopjet Tätigkeitsbericht"].css == branding.ACTIVITY_REPORT_CSS
+		assert "bank_iban" not in documents["Loopjet Tätigkeitsbericht"].html

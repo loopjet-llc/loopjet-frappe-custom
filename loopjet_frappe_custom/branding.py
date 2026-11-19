@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import frappe
 
+from loopjet_frappe_custom.activity_report_print import ACTIVITY_REPORT_CSS, ACTIVITY_REPORT_HTML
 from loopjet_frappe_custom.invoice_print import INVOICE_CSS, INVOICE_HTML
 
 PRINT_FORMAT_NAME_BY_DOCTYPE = {
 	"Sales Invoice": "Loopjet Invoice",
 	"Quotation": "Loopjet Offer",
+	"Loopjet Activity Report": "Loopjet Tätigkeitsbericht",
 }
 
 LETTER_HEAD_NAME = "Loopjet Letterhead"
@@ -769,8 +771,12 @@ def install_print_formats() -> None:
 		doc.disabled = 0
 		doc.pdf_generator = "chrome"
 		doc.print_format_type = "Jinja"
-		doc.html = INVOICE_HTML if doctype == "Sales Invoice" else PRINT_HTML
-		doc.css = INVOICE_CSS if doctype == "Sales Invoice" else PRINT_CSS
+		if doctype == "Sales Invoice":
+			doc.html, doc.css = INVOICE_HTML, INVOICE_CSS
+		elif doctype == "Loopjet Activity Report":
+			doc.html, doc.css = ACTIVITY_REPORT_HTML, ACTIVITY_REPORT_CSS
+		else:
+			doc.html, doc.css = PRINT_HTML, PRINT_CSS
 		doc.margin_top = 0
 		doc.margin_bottom = 0
 		doc.margin_left = 0

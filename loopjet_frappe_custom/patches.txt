@@ -8,3 +8,4 @@ loopjet_frappe_custom.patches.v0_2.install_ai_sdr
 loopjet_frappe_custom.patches.v0_3.install_outbound_agent_api
 loopjet_frappe_custom.patches.v0_4.install_founder_cockpit
 loopjet_frappe_custom.patches.v0_5.install_customer_reports
+loopjet_frappe_custom.patches.v0_6.install_activity_reports
