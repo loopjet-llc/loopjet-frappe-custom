@@ -94,23 +94,23 @@ ACTIVITY_REPORT_CSS = """
 .lj-report-meta { display: flex; justify-content: space-between; gap: 15px; margin-top: 8px; border-bottom: 1px solid #e6e8ed; padding-bottom: 5px; }
 .lj-report-meta span { color: #5d6470; }
 .lj-report-meta strong { text-align: right; font-weight: 600; }
-.lj-report-title { margin: 22px 0 7px; color: #11123b; font-size: 16px; line-height: 1.35; }
-.lj-report-summary { margin-top: 15px; padding: 13px 16px; border-left: 3px solid #6756d6; background: #f6f6fb !important; break-inside: avoid; }
+.lj-report-title { margin: 16px 0 6px; color: #11123b; font-size: 16px; line-height: 1.35; }
+.lj-report-summary { margin-top: 10px; padding: 11px 16px; border-left: 3px solid #6756d6; background: #f6f6fb !important; break-inside: avoid; }
 .lj-report-summary p { margin: 6px 0 0; white-space: pre-line; }
-.lj-report-section-label { margin: 24px 0 8px; }
+.lj-report-section-label { margin: 16px 0 7px; }
 .lj-report-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .lj-report-table thead { display: table-header-group; }
 .lj-report-table th { padding: 8px 10px; background: #11123b !important; color: #fff; font-size: 8px; font-weight: 700; letter-spacing: .5px; text-align: left; }
 .lj-report-table th:first-child, .lj-report-date { width: 19%; }
 .lj-report-table th:last-child, .lj-report-hours { width: 14%; text-align: right; }
-.lj-report-table td { padding: 11px 10px; border-bottom: 1px solid #e1e4ea; vertical-align: top; }
+.lj-report-table td { padding: 6px 10px; border-bottom: 1px solid #e1e4ea; vertical-align: top; }
 .lj-report-table tr { break-inside: avoid; page-break-inside: avoid; }
 .lj-report-date { color: #4d5561; font-weight: 600; }
 .lj-report-activity-title { font-weight: 700; color: #11123b; }
 .lj-report-details { margin-top: 4px; color: #434a56; white-space: pre-line; overflow-wrap: anywhere; }
-.lj-report-total { display: flex; justify-content: flex-end; gap: 30px; margin-top: 14px; padding: 11px 13px; border-top: 2px solid #00009d; color: #11123b; break-inside: avoid; }
+.lj-report-total { display: flex; justify-content: flex-end; gap: 30px; margin-top: 8px; padding: 9px 13px; border-top: 2px solid #00009d; color: #11123b; break-inside: avoid; }
 .lj-report-total strong { font-size: 12px; }
-.lj-report-footer { display: flex; justify-content: space-between; gap: 18px; margin-top: 34px; padding-top: 12px; border-top: 1px solid #dce0e7; color: #667080; font-size: 8px; break-inside: avoid; }
+.lj-report-footer { display: flex; justify-content: space-between; gap: 18px; margin-top: 16px; padding-top: 10px; border-top: 1px solid #dce0e7; color: #667080; font-size: 8px; break-inside: avoid; }
 .lj-report-footer > div { width: 50%; }
 .lj-report-footer > div:last-child { text-align: right; }
 .lj-report-footer strong { color: #11123b; }
